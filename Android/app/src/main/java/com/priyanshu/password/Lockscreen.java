@@ -39,72 +39,75 @@ public class Lockscreen extends AppCompatActivity {
         boolean pinSet = prefs.getBoolean(KEY_PIN_SET, false);
 
         if (!pinSet) {
-            // First-time setup
-            startPinSetup();
+            isSettingPin = true;
+            instructionText.setText("Create a new PIN (4-8 digits)");
+            submitButton.setText("Submit");
         } else {
-            // Normal unlock flow
             instructionText.setText("Enter your PIN");
             submitButton.setText("Unlock");
-            submitButton.setOnClickListener(v -> verifyPin());
         }
 
-        // Auto-submit when 4-8 digits entered
+        // Enable button only when input is 4–8 digits
         pinInput.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (s.length() >= 4 && s.length() <= 8) {
-                    if (isSettingPin) {
-                        if (pinToConfirm == null) {
-                            // First entry
-                            pinToConfirm = s.toString();
-                            pinInput.setText("");
-                            instructionText.setText("Confirm your PIN");
-                        } else {
-                            if (s.toString().equals(pinToConfirm)) {
-                                savePinHash(pinToConfirm);
-                                Toast.makeText(getApplicationContext(), "PIN set successfully!", Toast.LENGTH_SHORT).show();
-                                startMainActivity();
-                            } else {
-                                Toast.makeText(getApplicationContext(), "PINs don't match. Try again.", Toast.LENGTH_SHORT).show();
-                                pinInput.setText("");
-                                instructionText.setText("Create a new PIN (4-8 digits)");
-                                pinToConfirm = null;
-                            }
-                        }
-                    } else {
-                        verifyPin();
-                    }
-                }
+                int length = s.length();
+                submitButton.setEnabled(length >= 4 && length <= 8);
             }
 
             @Override
             public void afterTextChanged(Editable s) {}
         });
-    }
 
-    private void startPinSetup() {
-        isSettingPin = true;
-        instructionText.setText("Create a new PIN (4-8 digits)");
-        submitButton.setVisibility(View.GONE);
-        pinToConfirm = null;
+        // Single click handler for both setup and unlock
+        submitButton.setOnClickListener(v -> {
+            String inputPin = pinInput.getText().toString();
+            if (inputPin.length() < 4 || inputPin.length() > 8) {
+                // Safety check (shouldn't happen due to button state)
+                Toast.makeText(this, "PIN must be 4–8 digits", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (isSettingPin) {
+                if (pinToConfirm == null) {
+                    // First PIN entry
+                    pinToConfirm = inputPin;
+                    pinInput.setText("");
+                    instructionText.setText("Confirm your PIN");
+                    submitButton.setEnabled(false); // wait for confirmation input
+                } else {
+                    // Confirm PIN
+                    if (inputPin.equals(pinToConfirm)) {
+                        savePinHash(pinToConfirm);
+                        Toast.makeText(this, "PIN set successfully!", Toast.LENGTH_SHORT).show();
+                        startMainActivity();
+                    } else {
+                        Toast.makeText(this, "PINs don't match. Try again.", Toast.LENGTH_SHORT).show();
+                        pinInput.setText("");
+                        instructionText.setText("Create a new PIN (4-8 digits)");
+                        pinToConfirm = null;
+                        submitButton.setEnabled(false);
+                    }
+                }
+            } else {
+                // Unlock mode
+                verifyPin();
+            }
+        });
     }
 
     private void verifyPin() {
         String inputPin = pinInput.getText().toString();
-        if (inputPin.length() < 4 || inputPin.length() > 8) {
-            Toast.makeText(this, "PIN must be 4-8 digits", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
         String storedHash = prefs.getString(KEY_PIN_HASH, "");
         if (hashPin(inputPin).equals(storedHash)) {
             startMainActivity();
         } else {
             Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show();
             pinInput.setText("");
+            submitButton.setEnabled(false);
         }
     }
 
