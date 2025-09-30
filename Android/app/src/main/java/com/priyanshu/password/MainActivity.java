@@ -4,7 +4,6 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
@@ -19,12 +18,33 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         Button lockButton = findViewById(R.id.btn_lock);
-        Button editButton = findViewById(R.id.btn_edit);
-        Button resetButton = findViewById(R.id.btn_reset);
+        Button manageCardsButton = findViewById(R.id.btn_edit); // "Manage Cards" button
+        Button resetPinButton = findViewById(R.id.btn_reset);
 
         lockButton.setOnClickListener(v -> lockApp());
-        editButton.setOnClickListener(v -> editCards());
-        resetButton.setOnClickListener(v -> resetPin());
+        manageCardsButton.setOnClickListener(v -> showCardManagementMenu());
+        resetPinButton.setOnClickListener(v -> resetPin());
+    }
+
+    private void showCardManagementMenu() {
+        String[] options = {"Add", "Edit", "Delete"};
+        new AlertDialog.Builder(this)
+                .setTitle("Card Options")
+                .setItems(options, (dialog, which) -> {
+                    switch (which) {
+                        case 0:
+                            Toast.makeText(this, "Add selected", Toast.LENGTH_SHORT).show();
+                            break;
+                        case 1:
+                            Toast.makeText(this, "Edit selected", Toast.LENGTH_SHORT).show();
+                            break;
+                        case 2:
+                            Toast.makeText(this, "Delete selected", Toast.LENGTH_SHORT).show();
+                            break;
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void lockApp() {
@@ -33,26 +53,20 @@ public class MainActivity extends AppCompatActivity {
         finish();
     }
 
-    private void editCards() {
-        Toast.makeText(this, "Card management coming soon!", Toast.LENGTH_SHORT).show();
-    }
-
     private void resetPin() {
         new AlertDialog.Builder(this)
                 .setTitle("Reset PIN")
-                .setMessage("Are you sure you want to reset your PIN?\n\nYou'll be redirected to set a new PIN immediately.")
+                .setMessage("Are you sure you want to reset your PIN?")
                 .setPositiveButton("Yes, Reset", (dialog, which) -> {
                     SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
                     prefs.edit()
                             .remove("pin_hash")
                             .putBoolean(KEY_PIN_SET, false)
                             .apply();
-
                     Toast.makeText(this, "PIN reset successfully!", Toast.LENGTH_SHORT).show();
-                    lockApp(); // Go to lock screen to set new PIN
+                    lockApp();
                 })
                 .setNegativeButton("Cancel", null)
-                .setCancelable(true)
                 .show();
     }
 }
