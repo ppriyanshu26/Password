@@ -1,5 +1,6 @@
 package com.priyanshu.password;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -37,13 +38,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void resetPin() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        prefs.edit()
-                .remove("pin_hash")
-                .putBoolean("pin_set", false)
-                .apply();
+        new AlertDialog.Builder(this)
+                .setTitle("Reset PIN")
+                .setMessage("Are you sure you want to reset your PIN?\n\nYou'll be redirected to set a new PIN immediately.")
+                .setPositiveButton("Yes, Reset", (dialog, which) -> {
+                    SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                    prefs.edit()
+                            .remove("pin_hash")
+                            .putBoolean(KEY_PIN_SET, false)
+                            .apply();
 
-        Toast.makeText(this, "PIN reset successfully!", Toast.LENGTH_SHORT).show();
-        lockApp();
+                    Toast.makeText(this, "PIN reset successfully!", Toast.LENGTH_SHORT).show();
+                    lockApp(); // Go to lock screen to set new PIN
+                })
+                .setNegativeButton("Cancel", null)
+                .setCancelable(true)
+                .show();
     }
 }
