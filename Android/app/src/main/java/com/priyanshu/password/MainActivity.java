@@ -14,13 +14,22 @@ import android.widget.ArrayAdapter;
 import android.widget.TextView;
 import android.view.View;
 import android.view.ViewGroup;
-
+import com.priyanshu.password.PasswordCard;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
+
 
 public class MainActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "AppPrefs";
     private static final String KEY_PIN_SET = "pin_set";
+    private List<PasswordCard> cardList = new ArrayList<>();
+    private static final String KEY_CARDS = "cards";
+    private Gson gson = new Gson();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,6 +43,12 @@ public class MainActivity extends AppCompatActivity {
         lockButton.setOnClickListener(v -> lockApp());
         manageCardsButton.setOnClickListener(v -> showCardManagementMenu());
         resetPinButton.setOnClickListener(v -> resetPin());
+
+        // Load saved cards when app starts
+        loadCards();
+        for (PasswordCard card : cardList) {
+            addCard(card.appName, card.username, card.password);
+        }
     }
 
     private void showCardManagementMenu() {
@@ -124,46 +139,64 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void addCard(String appName, String username, String password) {
-        // Create CardView
+        // Create CardView (UI part)
         CardView cardView = new CardView(this);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
         );
-        params.setMargins(0, 0, 0, 24); // spacing between cards
+        params.setMargins(0, 0, 0, 24);
         cardView.setLayoutParams(params);
         cardView.setRadius(16f);
         cardView.setCardElevation(8f);
         cardView.setUseCompatPadding(true);
 
-        // Inner layout
         LinearLayout innerLayout = new LinearLayout(this);
         innerLayout.setOrientation(LinearLayout.VERTICAL);
         innerLayout.setPadding(32, 32, 32, 32);
 
-        // Title
         TextView tvAppName = new TextView(this);
         tvAppName.setText(appName);
         tvAppName.setTextSize(18);
         tvAppName.setTypeface(null, Typeface.BOLD);
         innerLayout.addView(tvAppName);
 
-        // Username
         TextView tvUsername = new TextView(this);
         tvUsername.setText("Username: " + username);
         innerLayout.addView(tvUsername);
 
-        // Password
         TextView tvPassword = new TextView(this);
         tvPassword.setText("Password: " + password);
         innerLayout.addView(tvPassword);
 
-        // Add inner layout to card
         cardView.addView(innerLayout);
 
-        // Finally add card to container
         LinearLayout container = findViewById(R.id.cards_container);
         container.addView(cardView);
+
+        // Save card data
+        PasswordCard newCard = new PasswordCard(appName, username, password);
+        cardList.add(newCard);
+        saveCards();
+    }
+
+    private void saveCards() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        String json = gson.toJson(cardList);
+        editor.putString(KEY_CARDS, json);
+        editor.apply();
+    }
+
+    private void loadCards() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String json = prefs.getString(KEY_CARDS, null);
+        if (json != null) {
+            Type type = new TypeToken<ArrayList<PasswordCard>>() {}.getType();
+            cardList = gson.fromJson(json, type);
+        } else {
+            cardList = new ArrayList<>();
+        }
     }
 
     private void lockApp() {
