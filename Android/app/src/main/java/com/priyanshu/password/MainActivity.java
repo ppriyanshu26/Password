@@ -7,6 +7,10 @@ import android.os.Bundle;
 import android.widget.Button;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import android.widget.ArrayAdapter;
+import android.widget.TextView;
+import android.view.View;
+import android.view.ViewGroup;
 
 public class MainActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "AppPrefs";
@@ -27,10 +31,39 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showCardManagementMenu() {
-        String[] options = {"Add", "Edit", "Delete"};
+        // Define items and corresponding built-in icons
+        String[] items = {"Add Password", "Edit Password", "Delete Password"};
+        int[] icons = {
+                android.R.drawable.ic_menu_add,
+                android.R.drawable.ic_menu_edit,
+                android.R.drawable.ic_menu_delete
+        };
+
+        // Create a simple list adapter
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.select_dialog_item, android.R.id.text1, items) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                TextView textView = (TextView) view.findViewById(android.R.id.text1);
+
+                // Set compound drawable (icon on left)
+                textView.setCompoundDrawablesWithIntrinsicBounds(icons[position], 0, 0, 0);
+                textView.setCompoundDrawablePadding(24); // space between icon and text
+
+                // Optional: Make "Delete" red
+                if (position == 2) {
+                    textView.setTextColor(getColor(android.R.color.holo_red_dark));
+                } else {
+                    textView.setTextColor(getColor(android.R.color.primary_text_dark)); // or use your theme color
+                }
+
+                return view;
+            }
+        };
+
         new AlertDialog.Builder(this)
                 .setTitle("Card Options")
-                .setItems(options, (dialog, which) -> {
+                .setAdapter(adapter, (dialog, which) -> {
                     switch (which) {
                         case 0:
                             Toast.makeText(this, "Add selected", Toast.LENGTH_SHORT).show();
