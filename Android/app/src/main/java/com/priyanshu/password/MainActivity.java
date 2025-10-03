@@ -28,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_PIN_HASH = "pin_hash";
     private static final String KEY_CARDS = "cards";
     private List<PasswordCard> cardList = new ArrayList<>();
+    private LinearLayout container;
     private Gson gson = new Gson();
 
     @Override
@@ -45,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Load and display
         loadCards();
-        LinearLayout container = findViewById(R.id.cards_container);
+        container = findViewById(R.id.cards_container);
         if (container != null) {
             for (PasswordCard card : cardList) {
                 if (card == null) continue;
@@ -96,7 +97,11 @@ public class MainActivity extends AppCompatActivity {
                             Toast.makeText(this, "Edit selected (not implemented yet)", Toast.LENGTH_SHORT).show();
                             break;
                         case 2:
-                            Toast.makeText(this, "Delete selected (not implemented yet)", Toast.LENGTH_SHORT).show();
+                            if (cardList.isEmpty()) {
+                                Toast.makeText(this, "No passwords to delete", Toast.LENGTH_SHORT).show();
+                            } else {
+                                showDeletePasswordDialog();
+                            }
                             break;
                     }
                 })
@@ -133,6 +138,7 @@ public class MainActivity extends AppCompatActivity {
                     if (!appName.isEmpty() && !username.isEmpty() && !password.isEmpty()) {
                         addCardAndSave(appName, username, password);
                     } else {
+                        showAddPasswordDialog();
                         Toast.makeText(this, "All fields required", Toast.LENGTH_SHORT).show();
                     }
                 })
@@ -140,7 +146,6 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    // Creates UI
     private void createCardView(String appName, String username, String password) {
         CardView cardView = new CardView(this);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -179,7 +184,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // Saves to SharedPreferences
     private void addCardAndSave(String appName, String username, String password) {
         createCardView(appName, username, password);
         PasswordCard newCard = new PasswordCard(appName, username, password);
@@ -238,5 +242,44 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private void showDeletePasswordDialog() {
+        List<String> appNames = new ArrayList<>();
+        for (PasswordCard card : cardList) {
+            appNames.add(card.appName != null ? card.appName : "Unknown");
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Delete Password")
+                .setItems(appNames.toArray(new String[0]), (dialog, which) -> {
+                    String appName = appNames.get(which);
+                    new AlertDialog.Builder(this)
+                            .setTitle("Confirm Delete")
+                            .setMessage("Delete password for \"" + appName + "\"?")
+                            .setPositiveButton("Delete", (confirmDialog, i) -> {
+                                cardList.remove(which);
+                                saveCards();
+                                refreshCardViews();
+                                Toast.makeText(this, "Password deleted", Toast.LENGTH_SHORT).show();
+                            })
+                            .setNegativeButton("Cancel", null)
+                            .show();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void refreshCardViews() {
+        container.removeAllViews();
+        for (PasswordCard card : cardList) {
+            if (card == null) continue;
+            String app = card.appName != null ? card.appName.trim() : "";
+            String user = card.username != null ? card.username.trim() : "";
+            String pass = card.password != null ? card.password.trim() : "";
+            if (!app.isEmpty() && !user.isEmpty() && !pass.isEmpty()) {
+                createCardView(app, user, pass);
+            }
+        }
     }
 }
