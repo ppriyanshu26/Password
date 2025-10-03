@@ -25,6 +25,7 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "AppPrefs";
     private static final String KEY_PIN_SET = "pin_set";
+    private static final String KEY_PIN_HASH = "pin_hash";
     private static final String KEY_CARDS = "cards";
     private List<PasswordCard> cardList = new ArrayList<>();
     private Gson gson = new Gson();
@@ -42,19 +43,20 @@ public class MainActivity extends AppCompatActivity {
         manageCardsButton.setOnClickListener(v -> showCardManagementMenu());
         resetPinButton.setOnClickListener(v -> resetPin());
 
-        // Load saved cards and display them
+        // Load and display
         loadCards();
         LinearLayout container = findViewById(R.id.cards_container);
+        if (container != null) {
+            for (PasswordCard card : cardList) {
+                if (card == null) continue;
 
-        for (PasswordCard card : cardList) {
-            if (card == null) continue;
+                String app = card.appName != null ? card.appName.trim() : "";
+                String user = card.username != null ? card.username.trim() : "";
+                String pass = card.password != null ? card.password.trim() : "";
 
-            String app = card.appName != null ? card.appName.trim() : "";
-            String user = card.username != null ? card.username.trim() : "";
-            String pass = card.password != null ? card.password.trim() : "";
-
-            if (!app.isEmpty() && !user.isEmpty() && !pass.isEmpty()) {
-                addCard(app, user, pass);
+                if (!app.isEmpty() && !user.isEmpty() && !pass.isEmpty()) {
+                    createCardView(app, user, pass);
+                }
             }
         }
     }
@@ -129,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
                     String password = etPassword.getText().toString().trim();
 
                     if (!appName.isEmpty() && !username.isEmpty() && !password.isEmpty()) {
-                        addCard(appName, username, password);
+                        addCardAndSave(appName, username, password);
                     } else {
                         Toast.makeText(this, "All fields required", Toast.LENGTH_SHORT).show();
                     }
@@ -138,7 +140,8 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    private void addCard(String appName, String username, String password) {
+    // Creates UI
+    private void createCardView(String appName, String username, String password) {
         CardView cardView = new CardView(this);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -174,8 +177,11 @@ public class MainActivity extends AppCompatActivity {
         if (container != null) {
             container.addView(cardView);
         }
+    }
 
-        // Save to list and persist
+    // Saves to SharedPreferences
+    private void addCardAndSave(String appName, String username, String password) {
+        createCardView(appName, username, password);
         PasswordCard newCard = new PasswordCard(appName, username, password);
         cardList.add(newCard);
         saveCards();
@@ -192,16 +198,22 @@ public class MainActivity extends AppCompatActivity {
     private void loadCards() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String json = prefs.getString(KEY_CARDS, null);
-        if (json != null) {
-            Type type = new TypeToken<ArrayList<PasswordCard>>() {}.getType();
-            List<PasswordCard> loaded = gson.fromJson(json, type);
-            if (loaded != null) {
-                cardList = loaded;
-            } else {
-                cardList = new ArrayList<>();
+        cardList = new ArrayList<>();
+
+        if (json != null && !json.trim().isEmpty()) {
+            try {
+                Type type = new TypeToken<ArrayList<PasswordCard>>() {}.getType();
+                List<PasswordCard> loaded = gson.fromJson(json, type);
+                if (loaded != null) {
+                    for (PasswordCard card : loaded) {
+                        if (card != null) {
+                            cardList.add(card);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        } else {
-            cardList = new ArrayList<>();
         }
     }
 
@@ -214,12 +226,11 @@ public class MainActivity extends AppCompatActivity {
     private void resetPin() {
         new AlertDialog.Builder(this)
                 .setTitle("Reset PIN")
-                .setMessage("Are you sure you want to reset your PIN? All saved passwords will be deleted.")
+                .setMessage("Are you sure you want to reset your PIN?")
                 .setPositiveButton("Yes, Reset", (dialog, which) -> {
                     SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
                     prefs.edit()
                             .remove(KEY_PIN_HASH)
-                            .remove(KEY_CARDS) // 🔒 Clear passwords for security
                             .putBoolean(KEY_PIN_SET, false)
                             .apply();
 
