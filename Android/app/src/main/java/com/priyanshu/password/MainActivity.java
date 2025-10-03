@@ -6,15 +6,14 @@ import android.content.SharedPreferences;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.text.InputType;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.Toast;
-import android.widget.ArrayAdapter;
 import android.widget.TextView;
-import android.view.View;
-import android.view.ViewGroup;
-import com.priyanshu.password.PasswordCard;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import com.google.gson.Gson;
@@ -23,12 +22,11 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
-
 public class MainActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "AppPrefs";
     private static final String KEY_PIN_SET = "pin_set";
-    private List<PasswordCard> cardList = new ArrayList<>();
     private static final String KEY_CARDS = "cards";
+    private List<PasswordCard> cardList = new ArrayList<>();
     private Gson gson = new Gson();
 
     @Override
@@ -37,22 +35,31 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         Button lockButton = findViewById(R.id.btn_lock);
-        Button manageCardsButton = findViewById(R.id.btn_edit); // "Manage Cards" button
+        Button manageCardsButton = findViewById(R.id.btn_edit);
         Button resetPinButton = findViewById(R.id.btn_reset);
 
         lockButton.setOnClickListener(v -> lockApp());
         manageCardsButton.setOnClickListener(v -> showCardManagementMenu());
         resetPinButton.setOnClickListener(v -> resetPin());
 
-        // Load saved cards when app starts
+        // Load saved cards and display them
         loadCards();
+        LinearLayout container = findViewById(R.id.cards_container);
+
         for (PasswordCard card : cardList) {
-            addCard(card.appName, card.username, card.password);
+            if (card == null) continue;
+
+            String app = card.appName != null ? card.appName.trim() : "";
+            String user = card.username != null ? card.username.trim() : "";
+            String pass = card.password != null ? card.password.trim() : "";
+
+            if (!app.isEmpty() && !user.isEmpty() && !pass.isEmpty()) {
+                addCard(app, user, pass);
+            }
         }
     }
 
     private void showCardManagementMenu() {
-        // Define items and corresponding built-in icons
         String[] items = {"Add Password", "Edit Password", "Delete Password"};
         int[] icons = {
                 android.R.drawable.ic_menu_add,
@@ -60,24 +67,18 @@ public class MainActivity extends AppCompatActivity {
                 android.R.drawable.ic_menu_delete
         };
 
-        // Create a simple list adapter
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.select_dialog_item, android.R.id.text1, items) {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
-                TextView textView = (TextView) view.findViewById(android.R.id.text1);
-
-                // Set compound drawable (icon on left)
+                TextView textView = view.findViewById(android.R.id.text1);
                 textView.setCompoundDrawablesWithIntrinsicBounds(icons[position], 0, 0, 0);
-                textView.setCompoundDrawablePadding(24); // space between icon and text
-
-                // Optional: Make "Delete" red
+                textView.setCompoundDrawablePadding(24);
                 if (position == 2) {
                     textView.setTextColor(getColor(android.R.color.holo_red_dark));
                 } else {
-                    textView.setTextColor(getColor(android.R.color.primary_text_dark)); // or use your theme color
+                    textView.setTextColor(getColor(android.R.color.primary_text_dark));
                 }
-
                 return view;
             }
         };
@@ -102,7 +103,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showAddPasswordDialog() {
-        // Create a vertical layout for input fields
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(50, 40, 50, 10);
@@ -139,7 +139,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void addCard(String appName, String username, String password) {
-        // Create CardView (UI part)
         CardView cardView = new CardView(this);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -172,9 +171,11 @@ public class MainActivity extends AppCompatActivity {
         cardView.addView(innerLayout);
 
         LinearLayout container = findViewById(R.id.cards_container);
-        container.addView(cardView);
+        if (container != null) {
+            container.addView(cardView);
+        }
 
-        // Save card data
+        // Save to list and persist
         PasswordCard newCard = new PasswordCard(appName, username, password);
         cardList.add(newCard);
         saveCards();
@@ -193,7 +194,12 @@ public class MainActivity extends AppCompatActivity {
         String json = prefs.getString(KEY_CARDS, null);
         if (json != null) {
             Type type = new TypeToken<ArrayList<PasswordCard>>() {}.getType();
-            cardList = gson.fromJson(json, type);
+            List<PasswordCard> loaded = gson.fromJson(json, type);
+            if (loaded != null) {
+                cardList = loaded;
+            } else {
+                cardList = new ArrayList<>();
+            }
         } else {
             cardList = new ArrayList<>();
         }
@@ -208,13 +214,15 @@ public class MainActivity extends AppCompatActivity {
     private void resetPin() {
         new AlertDialog.Builder(this)
                 .setTitle("Reset PIN")
-                .setMessage("Are you sure you want to reset your PIN?")
+                .setMessage("Are you sure you want to reset your PIN? All saved passwords will be deleted.")
                 .setPositiveButton("Yes, Reset", (dialog, which) -> {
                     SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
                     prefs.edit()
-                            .remove("pin_hash")
+                            .remove(KEY_PIN_HASH)
+                            .remove(KEY_CARDS) // 🔒 Clear passwords for security
                             .putBoolean(KEY_PIN_SET, false)
                             .apply();
+
                     lockApp();
                 })
                 .setNegativeButton("Cancel", null)

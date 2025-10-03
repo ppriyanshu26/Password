@@ -5,6 +5,8 @@ public class PasswordCard {
     public String username;
     public String password;
 
+    public PasswordCard() {}
+
     public PasswordCard(String appName, String username, String password) {
         this.appName = appName;
         this.username = username;
