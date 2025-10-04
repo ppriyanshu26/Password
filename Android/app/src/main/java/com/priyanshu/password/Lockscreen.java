@@ -5,7 +5,6 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -19,7 +18,6 @@ public class Lockscreen extends AppCompatActivity {
     private static final String PREFS_NAME = "AppPrefs";
     private static final String KEY_PIN_HASH = "pin_hash";
     private static final String KEY_PIN_SET = "pin_set";
-
     private static final String STATE_IS_SETTING_PIN = "is_setting_pin";
     private static final String STATE_PIN_TO_CONFIRM = "pin_to_confirm";
 
@@ -30,6 +28,7 @@ public class Lockscreen extends AppCompatActivity {
     private String pinToConfirm;
     private boolean isSettingPin = false;
 
+    // Called when the activity is created
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -94,6 +93,7 @@ public class Lockscreen extends AppCompatActivity {
         });
     }
 
+    // Resets the PIN setup process
     private void resetPinSetup() {
         pinToConfirm = null;
         pinInput.setText("");
@@ -101,6 +101,7 @@ public class Lockscreen extends AppCompatActivity {
         submitButton.setEnabled(false);
     }
 
+    // Saves the current state of the activity
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
@@ -108,6 +109,7 @@ public class Lockscreen extends AppCompatActivity {
         outState.putString(STATE_PIN_TO_CONFIRM, pinToConfirm);
     }
 
+    // Restores the previous state of the activity
     @Override
     protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
@@ -126,6 +128,7 @@ public class Lockscreen extends AppCompatActivity {
         }
     }
 
+    // Verifies the entered PIN against the stored hash
     private void verifyPin() {
         String inputPin = pinInput.getText().toString();
         String storedHash = prefs.getString(KEY_PIN_HASH, "");
@@ -138,6 +141,7 @@ public class Lockscreen extends AppCompatActivity {
         }
     }
 
+    // Saves the hashed PIN in SharedPreferences
     private void savePinHash(String pin) {
         String hash = hashPin(pin);
         prefs.edit()
@@ -146,6 +150,7 @@ public class Lockscreen extends AppCompatActivity {
                 .apply();
     }
 
+    // Hashes the PIN using SHA-256
     private String hashPin(String pin) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -162,6 +167,7 @@ public class Lockscreen extends AppCompatActivity {
         }
     }
 
+    // Starts the main activity after successful unlock
     private void startMainActivity() {
         Intent intent = new Intent(this, MainActivity.class);
         startActivity(intent);
