@@ -31,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout container;
     private Gson gson = new Gson();
 
+    // Called when the activity is created
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -44,7 +45,6 @@ public class MainActivity extends AppCompatActivity {
         manageCardsButton.setOnClickListener(v -> showCardManagementMenu());
         resetPinButton.setOnClickListener(v -> resetPin());
 
-        // Load and display
         loadCards();
         container = findViewById(R.id.cards_container);
         if (container != null) {
@@ -62,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Shows a menu for managing saved passwords
     private void showCardManagementMenu() {
         String[] items = {"Add Password", "Edit Password", "Delete Password"};
         int[] icons = {
@@ -109,6 +110,7 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    // Displays a dialog to add a new password card
     private void showAddPasswordDialog() {
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
@@ -146,6 +148,7 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    // Creates a visual card for displaying stored credentials
     private void createCardView(String appName, String username, String password) {
         CardView cardView = new CardView(this);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -184,6 +187,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Adds a new card and saves it to shared preferences
     private void addCardAndSave(String appName, String username, String password) {
         createCardView(appName, username, password);
         PasswordCard newCard = new PasswordCard(appName, username, password);
@@ -191,6 +195,7 @@ public class MainActivity extends AppCompatActivity {
         saveCards();
     }
 
+    // Saves all password cards to shared preferences
     private void saveCards() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
@@ -199,6 +204,7 @@ public class MainActivity extends AppCompatActivity {
         editor.apply();
     }
 
+    // Loads saved password cards from shared preferences
     private void loadCards() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String json = prefs.getString(KEY_CARDS, null);
@@ -221,12 +227,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Locks the app and returns to the lock screen
     private void lockApp() {
         Intent intent = new Intent(this, Lockscreen.class);
         startActivity(intent);
         finish();
     }
 
+    // Resets the user's PIN and returns to the lock screen
     private void resetPin() {
         new AlertDialog.Builder(this)
                 .setTitle("Reset PIN")
@@ -244,6 +252,7 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    // Displays a dialog for deleting a saved password
     private void showDeletePasswordDialog() {
         List<String> appNames = new ArrayList<>();
         for (PasswordCard card : cardList) {
@@ -270,6 +279,7 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    // Refreshes the displayed password cards
     private void refreshCardViews() {
         container.removeAllViews();
         for (PasswordCard card : cardList) {
