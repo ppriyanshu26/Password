@@ -1,23 +1,19 @@
 import json
 import os
+import sys
+import platform
 import tkinter as tk
 from tkinter import ttk, messagebox
 import keyboard
 import pyperclip
 import re
 
-try:
-    import win32gui  # type: ignore
-    import win32process  # type: ignore
-    import psutil
-    WINDOWS_AVAILABLE = True
-except ImportError:
-    WINDOWS_AVAILABLE = False
-    print("Note: Install pywin32 and psutil for better window detection")
+import win32gui  # type: ignore
+import win32process  # type: ignore
+import psutil
 
 FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "credentials.json")
-HOTKEY = "ctrl+shift+q"
-
+HOTKEY = "ctrl+alt+q"
 
 def load_creds():
     if os.path.exists(FILE):
@@ -25,27 +21,24 @@ def load_creds():
             return json.load(f)
     return {}
 
-
 def save_creds(creds):
     with open(FILE, 'w') as f:
         json.dump(creds, f, indent=4)
 
 def get_active_window_name():
-    if WINDOWS_AVAILABLE:
+    try:
+        hwnd = win32gui.GetForegroundWindow()
+        window_title = win32gui.GetWindowText(hwnd)
+        
+        _, pid = win32process.GetWindowThreadProcessId(hwnd)
         try:
-            hwnd = win32gui.GetForegroundWindow()
-            window_title = win32gui.GetWindowText(hwnd)
-            
-            _, pid = win32process.GetWindowThreadProcessId(hwnd)
-            try:
-                process = psutil.Process(pid)
-                process_name = process.name().lower().replace('.exe', '')
-                return process_name, window_title
-            except:
-                return window_title.lower(), window_title
-        except:
-            return "unknown", "Unknown"
-    return "unknown", "Unknown"
+            process = psutil.Process(pid)
+            process_name = process.name().lower().replace('.exe', '')
+            return process_name, window_title
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            return window_title.lower(), window_title
+    except Exception:
+        return "unknown", "Unknown"
 
 def extract_words(text):
     text = re.sub(r'[_\-./\\|]', ' ', text)
