@@ -56,3 +56,30 @@ def find_matching_credentials(window_title, process_name, credentials):
                 if app_key in matches:
                     break
     return matches
+
+def add_credential(app, username, password, secretco, crypto):
+    creds = load_creds()
+    new_cred = {
+        "username": username,
+        "password": crypto.encrypt_aes256(password)
+    }
+    if secretco:
+        new_cred["secretco"] = crypto.encrypt_aes256(secretco)
+    app = app.strip().lower()
+    if app in creds:
+        creds[app].append(new_cred)
+    else:
+        creds[app] = [new_cred]
+    save_creds(creds)
+    return True, f"Credential added for '{app}'!"
+
+def delete_credential(app, username):
+    creds = load_creds()
+    original_count = len(creds[app])
+    creds[app] = [c for c in creds[app] if c['username'] != username]
+    if len(creds[app]) == original_count:
+        return False, "Credential not found!"
+    if not creds[app]:
+        del creds[app]
+    save_creds(creds)
+    return True, f"Credential deleted for '{app}'!"

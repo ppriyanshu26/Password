@@ -6,7 +6,7 @@ import win32gui
 import win32con
 import win32api
 from classes import Totp, Crypto
-from functions import load_creds, get_active_window_name, find_matching_credentials
+from functions import load_creds, get_active_window_name, find_matching_credentials, add_credential, delete_credential
 
 HOTKEY = "win+alt+z"
 
@@ -31,15 +31,17 @@ class PasswordFillerGUI:
         self.last_window_title = window_title
         
         self.root = tk.Tk()
-        self.root.title("Password Filler")
-        self.root.geometry("400x350")
+        self.root.title("Password Filler v1.0.0")
+        self.root.resizable(False, False)
         self.root.attributes('-topmost', True)
         self.root.configure(bg='#2b2b2b')
         
+        self.root.withdraw()
         self.root.update_idletasks()
-        x = (self.root.winfo_screenwidth()//2)-200
-        y = (self.root.winfo_screenheight()//2)-175
-        self.root.geometry(f"400x350+{x}+{y}")
+        x = (self.root.winfo_screenwidth()//2)-225
+        y = (self.root.winfo_screenheight()//2)-200
+        self.root.geometry(f"450x400+{x}+{y}")
+        self.root.deiconify()
         
         self.root.lift()
         self.root.attributes('-topmost', True)
@@ -105,6 +107,7 @@ class PasswordFillerGUI:
         for widget in self.main_frame.winfo_children():
             widget.destroy()
         
+        self.root.bind('<Escape>', lambda e: self.close_window())
         self.root.bind('<Return>', lambda e: self.edit_creds())
         
         ttk.Label(self.main_frame, text="Password Filler", style='Title.TLabel').pack(pady=(0, 10))
@@ -196,6 +199,27 @@ class PasswordFillerGUI:
                 self.show_inline_message("No TOTP assigned for this credential!", is_error=True)
     
     def edit_creds(self):
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+        
+        self.root.bind('<Escape>', lambda e: self.show_main_content())
+        self.root.bind('<Return>', lambda e: self.show_add_form())
+        
+        ttk.Label(self.main_frame, text="Edit Credentials", style='Title.TLabel').pack(pady=(0, 10))
+        
+        list_frame = ttk.Frame(self.main_frame)
+        list_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        
+        scrollbar = ttk.Scrollbar(list_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.cred_listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set, 
+                                        bg='#3c3c3c', fg='white', 
+                                        selectbackground='#0078d4',
+                                        font=('Consolas', 10))
+        self.cred_listbox.pack(fill=tk.BOTH, expand=True)
+        scrollbar.config(command=self.cred_listbox.yview)
+        
         self.cred_listbox.delete(0, tk.END)
         self.matched_creds = []
         
@@ -207,6 +231,113 @@ class PasswordFillerGUI:
         
         if self.matched_creds:
             self.cred_listbox.selection_set(0)
+        
+        btn_frame = ttk.Frame(self.main_frame)
+        btn_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Button(btn_frame, text="Add New", command=self.show_add_form).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="Delete", command=self.confirm_delete).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="Back", command=self.show_main_content).pack(side=tk.RIGHT, padx=2)
+        
+        self.message_label = ttk.Label(self.main_frame, text="", style='Error.TLabel')
+        self.message_label.pack(pady=(5, 0))
+    
+    def show_add_form(self):
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+        
+        self.root.bind('<Escape>', lambda e: self.edit_creds())
+        self.root.bind('<Return>', lambda e: self.save_new_credential())
+        
+        ttk.Label(self.main_frame, text="Add Credential", style='Title.TLabel').pack(pady=(0, 10))
+        
+        form_frame = ttk.Frame(self.main_frame)
+        form_frame.pack(fill=tk.X, pady=5, padx=20)
+        
+        ttk.Label(form_frame, text="App Name:").pack(anchor=tk.W)
+        self.app_entry = tk.Entry(form_frame, font=('Segoe UI', 10), 
+                                   bg='#3c3c3c', fg='white', insertbackground='white', relief='flat')
+        self.app_entry.pack(fill=tk.X, pady=(2, 8), ipady=4)
+        
+        ttk.Label(form_frame, text="Username:").pack(anchor=tk.W)
+        self.username_entry = tk.Entry(form_frame, font=('Segoe UI', 10), 
+                                        bg='#3c3c3c', fg='white', insertbackground='white', relief='flat')
+        self.username_entry.pack(fill=tk.X, pady=(2, 8), ipady=4)
+        
+        ttk.Label(form_frame, text="Password:").pack(anchor=tk.W)
+        self.password_entry = tk.Entry(form_frame, show="•", font=('Segoe UI', 10), 
+                                        bg='#3c3c3c', fg='white', insertbackground='white', relief='flat')
+        self.password_entry.pack(fill=tk.X, pady=(2, 8), ipady=4)
+        
+        ttk.Label(form_frame, text="TOTP Secret (optional):").pack(anchor=tk.W)
+        self.secret_entry = tk.Entry(form_frame, font=('Segoe UI', 10), 
+                                      bg='#3c3c3c', fg='white', insertbackground='white', relief='flat')
+        self.secret_entry.pack(fill=tk.X, pady=(2, 8), ipady=4)
+        
+        btn_frame = ttk.Frame(self.main_frame)
+        btn_frame.pack(fill=tk.X, pady=10, padx=20)
+        
+        ttk.Button(btn_frame, text="Save", command=self.save_new_credential).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="Cancel", command=self.edit_creds).pack(side=tk.LEFT, padx=2)
+        
+        self.message_label = ttk.Label(self.main_frame, text="", style='Error.TLabel')
+        self.message_label.pack(pady=(5, 0))
+        
+        self.app_entry.focus_set()
+    
+    def save_new_credential(self):
+        app = self.app_entry.get().strip()
+        username = self.username_entry.get().strip()
+        password = self.password_entry.get().strip()
+        secret = self.secret_entry.get().strip()
+        
+        if not app or not username or not password:
+            self.show_inline_message("App, username and password are required!")
+            return
+        success, message = add_credential(app, username, password, secret, self.crypto)
+        
+        if success:
+            self.credentials = load_creds()
+            self.show_inline_message(message, is_error=False)
+            self.root.after(1000, self.edit_creds)
+        else:
+            self.show_inline_message(message)
+    
+    def confirm_delete(self):
+        cred = self.get_selected_cred()
+        if not cred:
+            self.show_inline_message("Please select a credential to delete!")
+            return
+        
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+
+        ttk.Label(self.main_frame, text="Confirm Delete", style='Title.TLabel').pack(pady=(30, 20))
+        
+        app, cred_data = cred
+        ttk.Label(self.main_frame, text=f"Are you sure you want to delete:").pack(pady=5)
+        ttk.Label(self.main_frame, text=f"[{app}] {cred_data['username']}", 
+                  font=('Consolas', 11, 'bold')).pack(pady=10)
+        
+        btn_frame = ttk.Frame(self.main_frame)
+        btn_frame.pack(pady=20)
+        
+        ttk.Button(btn_frame, text="Yes, Delete", 
+                   command=lambda: self.delete_selected(app, cred_data['username'])).pack(side=tk.LEFT, padx=10)
+        ttk.Button(btn_frame, text="Cancel", command=self.edit_creds).pack(side=tk.LEFT, padx=10)
+        
+        self.message_label = ttk.Label(self.main_frame, text="", style='Error.TLabel')
+        self.message_label.pack(pady=(5, 0))
+    
+    def delete_selected(self, app, username):
+        success, message = delete_credential(app, username)
+        
+        if success:
+            self.credentials = load_creds()
+            self.show_inline_message(message, is_error=False)
+            self.root.after(1000, self.edit_creds)
+        else:
+            self.show_inline_message(message)
     
     def lock(self):
         self.authenticated = False
@@ -222,6 +353,8 @@ class PasswordFillerGUI:
         if self.root:
             self.root.destroy()
             self.root = None
+        self.authenticated = False
+        self.crypto = None
     
     def _force_focus(self):
         try:
@@ -233,14 +366,15 @@ class PasswordFillerGUI:
                 win32gui.SetFocus(hwnd)
             
             self.root.focus_force()
-            self.cred_listbox.focus_set()
+            
+            if not self.authenticated and hasattr(self, 'key_entry'):
+                self.key_entry.focus_set()
+            elif hasattr(self, 'cred_listbox'):
+                self.cred_listbox.focus_set()
         except Exception:
             pass
 
 if __name__ == "__main__":
-    print("Password Filler - Started!")
-    print(f"Press {HOTKEY.upper()} to open the password filler")
-    print("Press Ctrl+C in this console to exit")
     
     app = PasswordFillerGUI()
     
