@@ -1,78 +1,23 @@
-import json
-import os
 import time
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 import keyboard
-import re
-import win32gui  
-import win32process 
-import win32con 
-import win32api  
-import psutil
+import win32gui
+import win32con
+import win32api
 from classes import Totp, Crypto
+from functions import load_creds, get_active_window_name, find_matching_credentials
 
-FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "credentials.json")
 HOTKEY = "win+alt+z"
 
-def load_creds():
-    if os.path.exists(FILE):
-        with open(FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-def save_creds(creds):
-    with open(FILE, 'w') as f:
-        json.dump(creds, f, indent=4)
-
-def get_active_window_name():
-    try:
-        hwnd = win32gui.GetForegroundWindow()
-        window_title = win32gui.GetWindowText(hwnd)
-        
-        _, pid = win32process.GetWindowThreadProcessId(hwnd)
-        try:
-            process = psutil.Process(pid)
-            process_name = process.name().lower().replace('.exe', '')
-            return process_name, window_title
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            return window_title.lower(), window_title
-    except Exception:
-        return "unknown", "Unknown"
-
-def extract_words(text):
-    text = re.sub(r'[_\-./\\|]', ' ', text)
-    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
-    words = re.findall(r'[a-zA-Z0-9]+', text.lower())
-    return words
-
-def find_matching_credentials(window_title, process_name, credentials):
-    title_words = extract_words(window_title)
-    process_words = extract_words(process_name)
-    all_words = set(title_words + process_words)
-    
-    matches = {}
-    
-    for app_key, creds in credentials.items():
-        app_words = extract_words(app_key)
-        for word in all_words:
-            if len(word) >= 3: 
-                for app_word in app_words:
-                    if word in app_word or app_word in word:
-                        matches[app_key] = creds
-                        break
-                if app_key in matches:
-                    break
-    
-    return matches
-
 class PasswordFillerGUI:
-    def __init__(self, crypto):
+    def __init__(self):
         self.root = None
         self.credentials = load_creds()
-        self.crypto = crypto
+        self.crypto = None
         self.last_app_name = ""
         self.last_window_title = ""
+        self.authenticated = False
         
     def create_window(self):
         if self.root is not None:
@@ -81,6 +26,10 @@ class PasswordFillerGUI:
             except:
                 pass
         
+        app_name, window_title = get_active_window_name()
+        self.last_app_name = app_name
+        self.last_window_title = window_title
+        
         self.root = tk.Tk()
         self.root.title("Password Filler")
         self.root.geometry("400x350")
@@ -88,11 +37,10 @@ class PasswordFillerGUI:
         self.root.configure(bg='#2b2b2b')
         
         self.root.update_idletasks()
-        x = (self.root.winfo_screenwidth() // 2) - 200
-        y = (self.root.winfo_screenheight() // 2) - 175
+        x = (self.root.winfo_screenwidth()//2)-200
+        y = (self.root.winfo_screenheight()//2)-175
         self.root.geometry(f"400x350+{x}+{y}")
         
-        # Force window to get focus using Windows API
         self.root.lift()
         self.root.attributes('-topmost', True)
         self.root.after(10, self._force_focus)
@@ -103,17 +51,65 @@ class PasswordFillerGUI:
         style.configure('TLabel', background='#2b2b2b', foreground='white', font=('Segoe UI', 10))
         style.configure('Title.TLabel', font=('Segoe UI', 12, 'bold'))
         style.configure('TButton', font=('Segoe UI', 9))
+        style.configure('Error.TLabel', background='#2b2b2b', foreground='#ff6b6b', font=('Segoe UI', 9))
         
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        self.main_frame = ttk.Frame(self.root, padding="10")
+        self.main_frame.pack(fill=tk.BOTH, expand=True)
         
-        app_name, window_title = get_active_window_name()
-        self.last_app_name = app_name
-        self.last_window_title = window_title
+        self.root.bind('<Escape>', lambda e: self.close_window())
         
-        ttk.Label(main_frame, text="Password Filler", style='Title.TLabel').pack(pady=(0, 10))
+        if not self.authenticated:
+            self.show_lock_screen()
+        else:
+            self.show_main_content()
         
-        list_frame = ttk.Frame(main_frame)
+        self.root.mainloop()
+    
+    def show_lock_screen(self):
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+        
+        ttk.Label(self.main_frame, text="🔒 Password Filler", style='Title.TLabel').pack(pady=(30, 20))
+        
+        key_frame = ttk.Frame(self.main_frame)
+        key_frame.pack(fill=tk.X, pady=10, padx=40)
+        
+        ttk.Label(key_frame, text="Encryption Key:").pack(anchor=tk.W)
+        
+        self.key_entry = tk.Entry(key_frame, show="•", font=('Segoe UI', 11), 
+                                   bg='#3c3c3c', fg='white', insertbackground='white',
+                                   relief='flat')
+        self.key_entry.pack(fill=tk.X, pady=(5, 0), ipady=5)
+        self.key_entry.focus_set()
+        
+        self.error_label = ttk.Label(self.main_frame, text="", style='Error.TLabel')
+        self.error_label.pack(pady=(10, 0))
+        ttk.Button(self.main_frame, text="Unlock", command=self.unlock).pack(pady=5)
+        
+        self.root.bind('<Return>', lambda e: self.unlock())
+    
+    def unlock(self):
+        key = self.key_entry.get().strip()
+        
+        if len(key) < 8:
+            self.error_label.config(text="Key must be at least 8 characters!")
+            self.key_entry.delete(0, tk.END)
+            self.key_entry.focus_set()
+            return
+        
+        self.crypto = Crypto(key)
+        self.authenticated = True
+        self.show_main_content()
+    
+    def show_main_content(self):
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+        
+        self.root.bind('<Return>', lambda e: self.edit_creds())
+        
+        ttk.Label(self.main_frame, text="Password Filler", style='Title.TLabel').pack(pady=(0, 10))
+        
+        list_frame = ttk.Frame(self.main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
         scrollbar = ttk.Scrollbar(list_frame)
@@ -126,20 +122,20 @@ class PasswordFillerGUI:
         self.cred_listbox.pack(fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.cred_listbox.yview)
         
-        btn_frame = ttk.Frame(main_frame)
+        btn_frame = ttk.Frame(self.main_frame)
         btn_frame.pack(fill=tk.X, pady=5)
         
         ttk.Button(btn_frame, text="Fill Creds", command=self.fill_creds).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_frame, text="Fill TOTP", command=self.fill_totp).pack(side=tk.LEFT, padx=2)
-        ttk.Button(btn_frame, text="Search", command=self.show_all_creds).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="Edit", command=self.edit_creds).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="Lock", command=self.lock).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_frame, text="Close", command=self.close_window).pack(side=tk.RIGHT, padx=2)
         
-        self.root.bind('<Escape>', lambda e: self.close_window())
-        self.root.bind('<Return>', lambda e: self.fill_creds())
+        self.message_label = ttk.Label(self.main_frame, text="", style='Error.TLabel')
+        self.message_label.pack(pady=(5, 0))
         
         self.load_matching_creds()
-        
-        self.root.mainloop()
+        self.cred_listbox.focus_set()
     
     def load_matching_creds(self):
         self.cred_listbox.delete(0, tk.END)
@@ -197,9 +193,9 @@ class PasswordFillerGUI:
                 time.sleep(0.5)
                 keyboard.write(code)
             else:
-                messagebox.showwarning("No TOTP", "No TOTP assigned for this credential!")
+                self.show_inline_message("No TOTP assigned for this credential!", is_error=True)
     
-    def show_all_creds(self):
+    def edit_creds(self):
         self.cred_listbox.delete(0, tk.END)
         self.matched_creds = []
         
@@ -212,20 +208,27 @@ class PasswordFillerGUI:
         if self.matched_creds:
             self.cred_listbox.selection_set(0)
     
+    def lock(self):
+        self.authenticated = False
+        self.crypto = None
+        self.show_lock_screen()
+    
+    def show_inline_message(self, message, is_error=False, duration=3000):
+        if hasattr(self, 'message_label'):
+            self.message_label.config(text=message)
+            self.root.after(duration, lambda: self.message_label.config(text=""))
+    
     def close_window(self):
         if self.root:
             self.root.destroy()
             self.root = None
     
     def _force_focus(self):
-        """Force the window to get focus using Windows API"""
         try:
             hwnd = win32gui.FindWindow(None, "Password Filler")
             if hwnd:
-                # Simulate pressing Alt to allow SetForegroundWindow to work
                 win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
                 win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
-                
                 win32gui.SetForegroundWindow(hwnd)
                 win32gui.SetFocus(hwnd)
             
@@ -234,23 +237,16 @@ class PasswordFillerGUI:
         except Exception:
             pass
 
-print(f"Password Filler Started!")
-
-key = str(input("Enter encryption key: ")).strip()
-if len(key) < 8:
-    print("Key must be at least 8 characters long!")
-    exit(1)
-
-crypto = Crypto(key)
-
-print(f"Press {HOTKEY.upper()} to open the password filler")
-print("Press Ctrl+C in this console to exit")
-
-app = PasswordFillerGUI(crypto)
-
-keyboard.add_hotkey(HOTKEY, app.create_window)
-
-try:
-    keyboard.wait()
-except KeyboardInterrupt:
-    print("\nPassword Filler stopped.")
+if __name__ == "__main__":
+    print("Password Filler - Started!")
+    print(f"Press {HOTKEY.upper()} to open the password filler")
+    print("Press Ctrl+C in this console to exit")
+    
+    app = PasswordFillerGUI()
+    
+    keyboard.add_hotkey(HOTKEY, app.create_window)
+    
+    try:
+        keyboard.wait()
+    except KeyboardInterrupt:
+        print("\nPassword Filler stopped.")
