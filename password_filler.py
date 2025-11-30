@@ -8,8 +8,6 @@ import win32api
 from classes import Totp, Crypto
 from functions import load_creds, get_active_window_name, find_matching_credentials, add_credential, delete_credential
 
-HOTKEY = "win+alt+z"
-
 class PasswordFillerGUI:
     def __init__(self):
         self.root = None
@@ -17,7 +15,6 @@ class PasswordFillerGUI:
         self.crypto = None
         self.last_app_name = ""
         self.last_window_title = ""
-        self.authenticated = False
         
     def create_window(self):
         if self.root is not None:
@@ -60,10 +57,7 @@ class PasswordFillerGUI:
         
         self.root.bind('<Escape>', lambda e: self.close_window())
         
-        if not self.authenticated:
-            self.show_lock_screen()
-        else:
-            self.show_main_content()
+        self.show_lock_screen()
         
         self.root.mainloop()
     
@@ -100,7 +94,6 @@ class PasswordFillerGUI:
             return
         
         self.crypto = Crypto(key)
-        self.authenticated = True
         self.show_main_content()
     
     def show_main_content(self):
@@ -131,7 +124,6 @@ class PasswordFillerGUI:
         ttk.Button(btn_frame, text="Fill Creds", command=self.fill_creds).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_frame, text="Fill TOTP", command=self.fill_totp).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_frame, text="Edit", command=self.edit_creds).pack(side=tk.LEFT, padx=2)
-        ttk.Button(btn_frame, text="Lock", command=self.lock).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_frame, text="Close", command=self.close_window).pack(side=tk.RIGHT, padx=2)
         
         self.message_label = ttk.Label(self.main_frame, text="", style='Error.TLabel')
@@ -339,11 +331,6 @@ class PasswordFillerGUI:
         else:
             self.show_inline_message(message)
     
-    def lock(self):
-        self.authenticated = False
-        self.crypto = None
-        self.show_lock_screen()
-    
     def show_inline_message(self, message, is_error=False, duration=3000):
         if hasattr(self, 'message_label'):
             self.message_label.config(text=message)
@@ -353,7 +340,6 @@ class PasswordFillerGUI:
         if self.root:
             self.root.destroy()
             self.root = None
-        self.authenticated = False
         self.crypto = None
     
     def _force_focus(self):
@@ -367,7 +353,7 @@ class PasswordFillerGUI:
             
             self.root.focus_force()
             
-            if not self.authenticated and hasattr(self, 'key_entry'):
+            if hasattr(self, 'key_entry'):
                 self.key_entry.focus_set()
             elif hasattr(self, 'cred_listbox'):
                 self.cred_listbox.focus_set()
@@ -377,10 +363,4 @@ class PasswordFillerGUI:
 if __name__ == "__main__":
     
     app = PasswordFillerGUI()
-    
-    keyboard.add_hotkey(HOTKEY, app.create_window)
-    
-    try:
-        keyboard.wait()
-    except KeyboardInterrupt:
-        print("\nPassword Filler stopped.")
+    app.create_window()
