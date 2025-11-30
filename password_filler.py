@@ -1,19 +1,21 @@
 import json
 import os
-import sys
-import platform
+import time
 import tkinter as tk
 from tkinter import ttk, messagebox
 import keyboard
-import pyperclip
 import re
 
 import win32gui  # type: ignore
 import win32process  # type: ignore
+import win32con  # type: ignore
+import win32api  # type: ignore
 import psutil
 
+from classes import Totp
+
 FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "credentials.json")
-HOTKEY = "ctrl+alt+q"
+HOTKEY = "win+alt+z"
 
 def load_creds():
     if os.path.exists(FILE):
@@ -91,6 +93,11 @@ class PasswordFillerGUI:
         y = (self.root.winfo_screenheight() // 2) - 175
         self.root.geometry(f"400x350+{x}+{y}")
         
+        # Force window to get focus using Windows API
+        self.root.lift()
+        self.root.attributes('-topmost', True)
+        self.root.after(10, self._force_focus)
+        
         style = ttk.Style()
         style.theme_use('clam')
         style.configure('TFrame', background='#2b2b2b')
@@ -123,13 +130,13 @@ class PasswordFillerGUI:
         btn_frame = ttk.Frame(main_frame)
         btn_frame.pack(fill=tk.X, pady=5)
         
-        ttk.Button(btn_frame, text="Copy Username", command=self.copy_un).pack(side=tk.LEFT, padx=2)
-        ttk.Button(btn_frame, text="Copy Password", command=self.copy_pw).pack(side=tk.LEFT, padx=2)
-        ttk.Button(btn_frame, text="Type Both", command=self.type_creds).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="Fill Creds", command=self.fill_creds).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="Fill TOTP", command=self.fill_totp).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="Search", command=self.show_all_creds).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_frame, text="Close", command=self.close_window).pack(side=tk.RIGHT, padx=2)
         
         self.root.bind('<Escape>', lambda e: self.close_window())
-        self.root.bind('<Return>', lambda e: self.copy_pw())
+        self.root.bind('<Return>', lambda e: self.fill_creds())
         
         self.load_matching_creds()
         
@@ -169,33 +176,62 @@ class PasswordFillerGUI:
                 return self.matched_creds[idx]
         return None
     
-    def copy_un(self):
-        cred = self.get_selected_cred()
-        if cred:
-            pyperclip.copy(cred[1]['username'])
-            messagebox.showinfo("Copied", "Username copied to clipboard!")
-    
-    def copy_pw(self):
-        cred = self.get_selected_cred()
-        if cred:
-            pyperclip.copy(cred[1]['password'])
-            messagebox.showinfo("Copied", "Password copied to clipboard!")
-    
-    def type_creds(self):
+    def fill_creds(self):
         cred = self.get_selected_cred()
         if cred:
             self.close_window()
-            import time
-            time.sleep(0.5)  
+            time.sleep(0.5)
             keyboard.write(cred[1]['username'])
             keyboard.press_and_release('tab')
             time.sleep(0.1)
             keyboard.write(cred[1]['password'])
     
+    def fill_totp(self):
+        cred = self.get_selected_cred()
+        if cred:
+            secret = cred[1].get('secretco')
+            if secret:
+                code, _ = Totp(secret).generate_totp()
+                self.close_window()
+                time.sleep(0.5)
+                keyboard.write(code)
+            else:
+                messagebox.showwarning("No TOTP", "No TOTP assigned for this credential!")
+    
+    def show_all_creds(self):
+        self.cred_listbox.delete(0, tk.END)
+        self.matched_creds = []
+        
+        for app, creds in self.credentials.items():
+            for cred in creds:
+                self.matched_creds.append((app, cred))
+                display = f"[{app}] {cred['username']}"
+                self.cred_listbox.insert(tk.END, display)
+        
+        if self.matched_creds:
+            self.cred_listbox.selection_set(0)
+    
     def close_window(self):
         if self.root:
             self.root.destroy()
             self.root = None
+    
+    def _force_focus(self):
+        """Force the window to get focus using Windows API"""
+        try:
+            hwnd = win32gui.FindWindow(None, "Password Filler")
+            if hwnd:
+                # Simulate pressing Alt to allow SetForegroundWindow to work
+                win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
+                win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
+                
+                win32gui.SetForegroundWindow(hwnd)
+                win32gui.SetFocus(hwnd)
+            
+            self.root.focus_force()
+            self.cred_listbox.focus_set()
+        except Exception:
+            pass
 
 print(f"Password Filler Started!")
 print(f"Press {HOTKEY.upper()} to open the password filler")
