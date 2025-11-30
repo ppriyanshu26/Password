@@ -5,14 +5,12 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import keyboard
 import re
-
-import win32gui  # type: ignore
-import win32process  # type: ignore
-import win32con  # type: ignore
-import win32api  # type: ignore
+import win32gui  
+import win32process 
+import win32con 
+import win32api  
 import psutil
-
-from classes import Totp
+from classes import Totp, Crypto
 
 FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "credentials.json")
 HOTKEY = "win+alt+z"
@@ -69,9 +67,10 @@ def find_matching_credentials(window_title, process_name, credentials):
     return matches
 
 class PasswordFillerGUI:
-    def __init__(self):
+    def __init__(self, crypto):
         self.root = None
         self.credentials = load_creds()
+        self.crypto = crypto
         self.last_app_name = ""
         self.last_window_title = ""
         
@@ -184,14 +183,16 @@ class PasswordFillerGUI:
             keyboard.write(cred[1]['username'])
             keyboard.press_and_release('tab')
             time.sleep(0.1)
-            keyboard.write(cred[1]['password'])
+            decrypted_password = self.crypto.decrypt_aes256(cred[1]['password'])
+            keyboard.write(decrypted_password)
     
     def fill_totp(self):
         cred = self.get_selected_cred()
         if cred:
             secret = cred[1].get('secretco')
             if secret:
-                code, _ = Totp(secret).generate_totp()
+                decrypted_secret = self.crypto.decrypt_aes256(secret)
+                code, _ = Totp(decrypted_secret).generate_totp()
                 self.close_window()
                 time.sleep(0.5)
                 keyboard.write(code)
@@ -234,10 +235,18 @@ class PasswordFillerGUI:
             pass
 
 print(f"Password Filler Started!")
+
+key = str(input("Enter encryption key: ")).strip()
+if len(key) < 8:
+    print("Key must be at least 8 characters long!")
+    exit(1)
+
+crypto = Crypto(key)
+
 print(f"Press {HOTKEY.upper()} to open the password filler")
 print("Press Ctrl+C in this console to exit")
 
-app = PasswordFillerGUI()
+app = PasswordFillerGUI(crypto)
 
 keyboard.add_hotkey(HOTKEY, app.create_window)
 

@@ -1,5 +1,6 @@
 import json
 import os
+from classes import Crypto
 
 FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "credentials.json")
 
@@ -34,10 +35,14 @@ def add_cred():
     secretco = input("Secret Code (optional, press Enter to skip): ").strip()
     
     creds = load_creds()
-    new_cred = {"username": username, "password": password}
+    
+    new_cred = {
+        "username": username,
+        "password": obj.encrypt_aes256(password)
+    }
     
     if secretco:
-        new_cred["secretco"] = secretco
+        new_cred["secretco"] = obj.encrypt_aes256(secretco)
     
     if app in creds:
         creds[app].append(new_cred)
@@ -59,6 +64,13 @@ def list_creds():
         for cred in creds_list:
             print(f"  - {cred['username']}")
     print()
+
+key = str(input("Enter encryption key: ")).strip()
+if len(key) < 8:
+    print("Key must be at least 8 characters long!")
+    exit(1)
+
+obj = Crypto(key)
 
 while True:
     print("\n--- Credential Manager ---")
