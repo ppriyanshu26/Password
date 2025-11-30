@@ -30,8 +30,14 @@ def add_cred():
     if not password:
         print("Password cannot be empty!")
         return
+    
+    secretco = input("Secret Code (optional, press Enter to skip): ").strip()
+    
     creds = load_creds()
     new_cred = {"username": username, "password": password}
+    
+    if secretco:
+        new_cred["secretco"] = secretco
     
     if app in creds:
         creds[app].append(new_cred)
