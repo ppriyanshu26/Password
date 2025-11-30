@@ -4,18 +4,6 @@ import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
-import pyotp
-import time
-
-class Totp:
-    def __init__(self, secret):
-        self.secret = secret
-
-    def generate_totp(self):
-        totp = pyotp.TOTP(self.secret)
-        code = totp.now()
-        time_left = 30 - int(time.time())%30
-        return code, time_left
 
 class Crypto:
     def __init__(self, key_str):

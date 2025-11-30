@@ -5,16 +5,15 @@ import keyboard
 import win32gui
 import win32con
 import win32api
-from classes import Totp, Crypto
-from functions import load_creds, get_active_window_name, find_matching_credentials, add_credential, delete_credential
+from crypto import Crypto
+from functions import generate_totp, load_creds, add_credential, delete_credential
 
 class PasswordFillerGUI:
     def __init__(self):
         self.root = None
         self.credentials = load_creds()
         self.crypto = None
-        self.last_app_name = ""
-        self.last_window_title = ""
+        self.create_window()
         
     def create_window(self):
         if self.root is not None:
@@ -22,10 +21,6 @@ class PasswordFillerGUI:
                 self.root.destroy()
             except:
                 pass
-        
-        app_name, window_title = get_active_window_name()
-        self.last_app_name = app_name
-        self.last_window_title = window_title
         
         self.root = tk.Tk()
         self.root.title("Password Filler v1.0.0")
@@ -100,7 +95,7 @@ class PasswordFillerGUI:
         for widget in self.main_frame.winfo_children():
             widget.destroy()
         
-        self.root.bind('<Escape>', lambda e: self.close_window())
+        self.root.bind('<Escape>', lambda e: self.lock())
         self.root.bind('<Return>', lambda e: self.edit_creds())
         
         ttk.Label(self.main_frame, text="Password Filler", style='Title.TLabel').pack(pady=(0, 10))
@@ -118,63 +113,51 @@ class PasswordFillerGUI:
         self.cred_listbox.pack(fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.cred_listbox.yview)
         
+        self.cred_listbox.delete(0, tk.END)
+        self.matched_creds = []
+        
+        for app, creds in self.credentials.items():
+            for cred in creds:
+                self.matched_creds.append((app, cred))
+                display = f"[{app}] {cred['username']}"
+                self.cred_listbox.insert(tk.END, display)
+        
+        if self.matched_creds:
+            self.cred_listbox.selection_set(0)
+        
         btn_frame = ttk.Frame(self.main_frame)
         btn_frame.pack(fill=tk.X, pady=5)
         
         ttk.Button(btn_frame, text="Fill Creds", command=self.fill_creds).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_frame, text="Fill TOTP", command=self.fill_totp).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_frame, text="Edit", command=self.edit_creds).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="Lock", command=self.lock).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_frame, text="Close", command=self.close_window).pack(side=tk.RIGHT, padx=2)
         
         self.message_label = ttk.Label(self.main_frame, text="", style='Error.TLabel')
         self.message_label.pack(pady=(5, 0))
         
-        self.load_matching_creds()
         self.cred_listbox.focus_set()
-    
-    def load_matching_creds(self):
-        self.cred_listbox.delete(0, tk.END)
-        self.matched_creds = []
-        
-        matches = find_matching_credentials(
-            self.last_window_title, 
-            self.last_app_name, 
-            self.credentials
-        )
-        
-        for app, creds in matches.items():
-            for cred in creds:
-                self.matched_creds.append((app, cred))
-                display = f"[{app}] {cred['username']}"
-                self.cred_listbox.insert(tk.END, display)
-        
-        if not self.matched_creds:
-            for app, creds in self.credentials.items():
-                for cred in creds:
-                    self.matched_creds.append((app, cred))
-                    display = f"[{app}] {cred['username']}"
-                    self.cred_listbox.insert(tk.END, display)
-        
-        if self.matched_creds:
-            self.cred_listbox.selection_set(0)
     
     def get_selected_cred(self):
         selection = self.cred_listbox.curselection()
-        if selection and self.matched_creds:
-            idx = selection[0]
-            if idx < len(self.matched_creds):
-                return self.matched_creds[idx]
+        if not selection:
+            self.show_inline_message("Please select a credential!", is_error=True)
+            return None
+        idx = selection[0]
+        if idx < len(self.matched_creds):
+            return self.matched_creds[idx]
         return None
     
     def fill_creds(self):
         cred = self.get_selected_cred()
         if cred:
+            decrypted_password = self.crypto.decrypt_aes256(cred[1]['password'])
             self.close_window()
             time.sleep(0.5)
             keyboard.write(cred[1]['username'])
             keyboard.press_and_release('tab')
             time.sleep(0.1)
-            decrypted_password = self.crypto.decrypt_aes256(cred[1]['password'])
             keyboard.write(decrypted_password)
     
     def fill_totp(self):
@@ -182,8 +165,7 @@ class PasswordFillerGUI:
         if cred:
             secret = cred[1].get('secretco')
             if secret:
-                decrypted_secret = self.crypto.decrypt_aes256(secret)
-                code, _ = Totp(decrypted_secret).generate_totp()
+                code, _ = generate_totp(self.crypto.decrypt_aes256(secret))
                 self.close_window()
                 time.sleep(0.5)
                 keyboard.write(code)
@@ -331,6 +313,10 @@ class PasswordFillerGUI:
         else:
             self.show_inline_message(message)
     
+    def lock(self):
+        self.crypto = None
+        self.show_lock_screen()
+    
     def show_inline_message(self, message, is_error=False, duration=3000):
         if hasattr(self, 'message_label'):
             self.message_label.config(text=message)
@@ -360,7 +346,4 @@ class PasswordFillerGUI:
         except Exception:
             pass
 
-if __name__ == "__main__":
-    
-    app = PasswordFillerGUI()
-    app.create_window()
+PasswordFillerGUI()
