@@ -16,8 +16,9 @@ def load_creds():
     return {}
 
 def save_creds(creds):
+    sorted_creds = dict(sorted(creds.items(), key=lambda x: x[0].lower()))
     with open(FILE, 'w') as f:
-        json.dump(creds, f, indent=4)
+        json.dump(sorted_creds, f, indent=4)
 
 def add_credential(app, username, password, secretco, crypto):
     creds = load_creds()
