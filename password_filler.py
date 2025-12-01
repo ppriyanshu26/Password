@@ -248,7 +248,7 @@ class PasswordFillerGUI:
         if cred:
             secret = cred[1].get('secretco')
             if secret:
-                code, _ = generate_totp(self.crypto.decrypt_aes256(secret))
+                code = generate_totp(self.crypto.decrypt_aes256(secret))
                 self.close_window()
                 time.sleep(0.5)
                 keyboard.write(code)
