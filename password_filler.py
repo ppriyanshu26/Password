@@ -243,6 +243,7 @@ class PasswordFillerGUI:
             decrypted_password = self.crypto.decrypt_aes256(cred[1]['password'])
             self.close_window()
             time.sleep(0.5)
+            keyboard.press_and_release('tab')
             keyboard.write(cred[1]['username'])
             keyboard.press_and_release('tab')
             time.sleep(0.1)
