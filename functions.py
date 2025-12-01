@@ -2,6 +2,8 @@ import json
 import pyotp
 import time
 import os
+from openpyxl import Workbook
+from openpyxl.styles import Font
 
 FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "credentials.json")
 def generate_totp(secret):
@@ -46,3 +48,33 @@ def delete_credential(app, username):
         del creds[app]
     save_creds(creds)
     return True, f"Credential deleted for '{app}'!"
+
+def download(crypto):
+    try:
+        creds = load_creds()
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Credentials"
+    
+        headers = ["App", "Username", "Password", "TOTP Secret"]
+        for i, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=i, value=header)
+            cell.font = Font(bold=True)
+        j = 2
+        for app, cred_list in creds.items():
+            for cred in cred_list:
+                username = cred.get('username', '')
+                password = crypto.decrypt_aes256(cred.get('password', ''))
+                secret = cred.get('secretco', '')
+                if secret:
+                    secret = crypto.decrypt_aes256(secret)
+                ws.cell(row=j, column=1, value=app)
+                ws.cell(row=j, column=2, value=username)
+                ws.cell(row=j, column=3, value=password)
+                ws.cell(row=j, column=4, value=secret)
+                j += 1
+        desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop', 'credentials.xlsx')
+        wb.save(desktop_path)
+        return True, f"File saved to Desktop. Be sure to secure it."
+    except Exception as e:
+        return False, f"Failed to download Excel"

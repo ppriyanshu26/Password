@@ -6,12 +6,12 @@ import win32gui
 import win32con
 import win32api
 from crypto import Crypto
-from functions import generate_totp, load_creds, add_credential, delete_credential
+from functions import generate_totp, load_creds, add_credential, delete_credential, download
 
 class PasswordFillerGUI:
-    ACCENT_COLOR = '#F7DC6F'; BUTTON_COLOR = '#00CED1' 
-    def __init__(self):
-        self.root = None; self.credentials = load_creds(); self.crypto = None; self.create_window()
+    APP_COLOR = '#F7DC6F'; BUTTON_COLOR = '#00CED1' 
+    def __init__(self, ver):
+        self.root = None; self.credentials = load_creds(); self.crypto = None; self.VERSION = ver; self.create_window()
         
     def create_window(self):
         if self.root is not None:
@@ -20,7 +20,7 @@ class PasswordFillerGUI:
             except:
                 pass
         self.root = tk.Tk()
-        self.root.title("Password Filler v1.0.0")
+        self.root.title(f"Password Filler v{self.VERSION}")
         self.root.resizable(False, False)
         self.root.attributes('-topmost', True)
         self.root.configure(bg='#1a1a2e')
@@ -59,9 +59,9 @@ class PasswordFillerGUI:
         key_frame = ttk.Frame(self.main_frame)
         key_frame.pack(fill=tk.X, pady=10, padx=40)
         
-        ttk.Label(key_frame, text="Encryption Key:", foreground=self.ACCENT_COLOR).pack(anchor=tk.W)
+        ttk.Label(key_frame, text="Encryption Key:", foreground=self.APP_COLOR).pack(anchor=tk.W)
         
-        self.key_entry = tk.Entry(key_frame, show="•", font=('Segoe UI', 11), bg='#16213e', fg=self.ACCENT_COLOR, insertbackground=self.ACCENT_COLOR,relief='flat', highlightthickness=2, highlightcolor=self.ACCENT_COLOR,highlightbackground='#0f3460')
+        self.key_entry = tk.Entry(key_frame, show="•", font=('Segoe UI', 11), bg='#16213e', fg=self.APP_COLOR, insertbackground=self.APP_COLOR,relief='flat', highlightthickness=2, highlightcolor=self.APP_COLOR,highlightbackground='#0f3460')
         self.key_entry.pack(fill=tk.X, pady=(5, 0), ipady=5)
         self.key_entry.focus_set()
         
@@ -82,7 +82,7 @@ class PasswordFillerGUI:
         self.show_main_content()
     
     def _get_color_for_app(self, index):
-        return self.ACCENT_COLOR
+        return self.APP_COLOR
     
     def show_main_content(self):
         for widget in self.main_frame.winfo_children():
@@ -98,7 +98,7 @@ class PasswordFillerGUI:
         self.apps_frame = ttk.Frame(content_frame, width=120)
         self.apps_frame.pack(side=tk.LEFT, fill=tk.Y, expand=True, padx=(0, 5))
         self.apps_frame.pack_propagate(False)
-        apps_label = ttk.Label(self.apps_frame, text="📱 Apps", font=('Segoe UI', 12, 'bold'), foreground=self.ACCENT_COLOR)
+        apps_label = ttk.Label(self.apps_frame, text="📱 Apps", font=('Segoe UI', 12, 'bold'), foreground=self.APP_COLOR)
         apps_label.pack(anchor=tk.W, pady=(0, 5))
         apps_canvas = tk.Canvas(self.apps_frame, bg='#1a1a2e', highlightthickness=0)
         apps_scrollbar = ttk.Scrollbar(self.apps_frame, orient="vertical", command=apps_canvas.yview)
@@ -149,8 +149,8 @@ class PasswordFillerGUI:
         edit_btn = tk.Button(btn_frame, text="✏️ Edit", command=self.edit_creds,bg=self.BUTTON_COLOR, fg='#1a1a2e', font=('Segoe UI', 9, 'bold'),relief='flat', cursor='hand2', width=10, pady=4)
         edit_btn.grid(row=0, column=2, padx=2, sticky='ew')
         
-        lock_btn = tk.Button(btn_frame, text="🔒 Lock", command=self.lock,bg=self.BUTTON_COLOR, fg='#1a1a2e', font=('Segoe UI', 9, 'bold'),relief='flat', cursor='hand2', width=10, pady=4)
-        lock_btn.grid(row=0, column=3, padx=2, sticky='ew')
+        downloads_btn = tk.Button(btn_frame, text="📥 Downloads", command=self.download_excel,bg=self.BUTTON_COLOR, fg='#1a1a2e', font=('Segoe UI', 9, 'bold'),relief='flat', cursor='hand2', width=10, pady=4)
+        downloads_btn.grid(row=0, column=3, padx=2, sticky='ew')
         
         self.message_label = ttk.Label(self.main_frame, text="", style='Error.TLabel')
         self.message_label.pack(pady=(5, 0))
@@ -267,11 +267,11 @@ class PasswordFillerGUI:
         dropdown_frame = ttk.Frame(self.main_frame)
         dropdown_frame.pack(fill=tk.X, pady=5, padx=10)
         
-        ttk.Label(dropdown_frame, text="📱 Select App:", foreground=self.ACCENT_COLOR, font=('Segoe UI', 10, 'bold')).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Label(dropdown_frame, text="📱 Select App:", foreground=self.APP_COLOR, font=('Segoe UI', 10, 'bold')).pack(side=tk.LEFT, padx=(0, 10))
         
         style = ttk.Style()
-        style.configure('App.TCombobox', fieldbackground='#16213e',background=self.BUTTON_COLOR,foreground='#eaeaea',arrowcolor=self.ACCENT_COLOR)
-        style.map('App.TCombobox',fieldbackground=[('readonly', '#16213e')],selectbackground=[('readonly', self.ACCENT_COLOR)],selectforeground=[('readonly', '#1a1a2e')])
+        style.configure('App.TCombobox', fieldbackground='#16213e',background=self.BUTTON_COLOR,foreground='#eaeaea',arrowcolor=self.APP_COLOR)
+        style.map('App.TCombobox',fieldbackground=[('readonly', '#16213e')],selectbackground=[('readonly', self.APP_COLOR)],selectforeground=[('readonly', '#1a1a2e')])
         
         app_names = [app.upper() for app in self.credentials.keys()]
         self.edit_app_var = tk.StringVar()
@@ -283,7 +283,7 @@ class PasswordFillerGUI:
         list_frame = ttk.Frame(self.main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=10, padx=10)
         
-        ttk.Label(list_frame, text="👤 Users:", foreground=self.ACCENT_COLOR,font=('Segoe UI', 10, 'bold')).pack(anchor=tk.W, pady=(0, 5))
+        ttk.Label(list_frame, text="👤 Users:", foreground=self.APP_COLOR,font=('Segoe UI', 10, 'bold')).pack(anchor=tk.W, pady=(0, 5))
         
         list_inner_frame = ttk.Frame(list_frame)
         list_inner_frame.pack(fill=tk.BOTH, expand=True)
@@ -291,7 +291,7 @@ class PasswordFillerGUI:
         scrollbar = ttk.Scrollbar(list_inner_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        self.cred_listbox = tk.Listbox(list_inner_frame, yscrollcommand=scrollbar.set, bg='#16213e', fg='#eaeaea', selectbackground=self.ACCENT_COLOR,selectforeground='#1a1a2e',font=('Segoe UI', 10),highlightthickness=2,highlightbackground=self.ACCENT_COLOR,highlightcolor=self.ACCENT_COLOR)
+        self.cred_listbox = tk.Listbox(list_inner_frame, yscrollcommand=scrollbar.set, bg='#16213e', fg='#eaeaea', selectbackground=self.APP_COLOR,selectforeground='#1a1a2e',font=('Segoe UI', 10),highlightthickness=2,highlightbackground=self.APP_COLOR,highlightcolor=self.APP_COLOR)
         self.cred_listbox.pack(fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.cred_listbox.yview)
         
@@ -349,20 +349,20 @@ class PasswordFillerGUI:
         form_frame = ttk.Frame(self.main_frame)
         form_frame.pack(fill=tk.X, pady=5, padx=20)
         
-        ttk.Label(form_frame, text="App Name:", foreground=self.ACCENT_COLOR).pack(anchor=tk.W)
-        self.app_entry = tk.Entry(form_frame, font=('Segoe UI', 10), bg='#16213e', fg='#eaeaea', insertbackground=self.ACCENT_COLOR, relief='flat',highlightthickness=2, highlightbackground=self.ACCENT_COLOR, highlightcolor=self.ACCENT_COLOR)
+        ttk.Label(form_frame, text="App Name:", foreground=self.APP_COLOR).pack(anchor=tk.W)
+        self.app_entry = tk.Entry(form_frame, font=('Segoe UI', 10), bg='#16213e', fg='#eaeaea', insertbackground=self.APP_COLOR, relief='flat',highlightthickness=2, highlightbackground=self.APP_COLOR, highlightcolor=self.APP_COLOR)
         self.app_entry.pack(fill=tk.X, pady=(2, 8), ipady=4)
         
-        ttk.Label(form_frame, text="Username:", foreground=self.ACCENT_COLOR).pack(anchor=tk.W)
-        self.username_entry = tk.Entry(form_frame, font=('Segoe UI', 10), bg='#16213e', fg='#eaeaea', insertbackground=self.ACCENT_COLOR, relief='flat',highlightthickness=2, highlightbackground=self.ACCENT_COLOR, highlightcolor=self.ACCENT_COLOR)
+        ttk.Label(form_frame, text="Username:", foreground=self.APP_COLOR).pack(anchor=tk.W)
+        self.username_entry = tk.Entry(form_frame, font=('Segoe UI', 10), bg='#16213e', fg='#eaeaea', insertbackground=self.APP_COLOR, relief='flat',highlightthickness=2, highlightbackground=self.APP_COLOR, highlightcolor=self.APP_COLOR)
         self.username_entry.pack(fill=tk.X, pady=(2, 8), ipady=4)
         
-        ttk.Label(form_frame, text="Password:", foreground=self.ACCENT_COLOR).pack(anchor=tk.W)
-        self.password_entry = tk.Entry(form_frame, show="•", font=('Segoe UI', 10), bg='#16213e', fg='#eaeaea', insertbackground=self.ACCENT_COLOR, relief='flat',highlightthickness=2, highlightbackground=self.ACCENT_COLOR, highlightcolor=self.ACCENT_COLOR)
+        ttk.Label(form_frame, text="Password:", foreground=self.APP_COLOR).pack(anchor=tk.W)
+        self.password_entry = tk.Entry(form_frame, show="•", font=('Segoe UI', 10), bg='#16213e', fg='#eaeaea', insertbackground=self.APP_COLOR, relief='flat',highlightthickness=2, highlightbackground=self.APP_COLOR, highlightcolor=self.APP_COLOR)
         self.password_entry.pack(fill=tk.X, pady=(2, 8), ipady=4)
         
-        ttk.Label(form_frame, text="TOTP Secret (optional):", foreground=self.ACCENT_COLOR).pack(anchor=tk.W)
-        self.secret_entry = tk.Entry(form_frame, font=('Segoe UI', 10), bg='#16213e', fg='#eaeaea', insertbackground=self.ACCENT_COLOR, relief='flat',highlightthickness=2, highlightbackground=self.ACCENT_COLOR, highlightcolor=self.ACCENT_COLOR)
+        ttk.Label(form_frame, text="TOTP Secret (optional):", foreground=self.APP_COLOR).pack(anchor=tk.W)
+        self.secret_entry = tk.Entry(form_frame, font=('Segoe UI', 10), bg='#16213e', fg='#eaeaea', insertbackground=self.APP_COLOR, relief='flat',highlightthickness=2, highlightbackground=self.APP_COLOR, highlightcolor=self.APP_COLOR)
         self.secret_entry.pack(fill=tk.X, pady=(2, 8), ipady=4)
         
         btn_frame = ttk.Frame(self.main_frame)
@@ -411,7 +411,7 @@ class PasswordFillerGUI:
         
         app, cred_data = cred
         ttk.Label(self.main_frame, text=f"Are you sure you want to delete:").pack(pady=5)
-        ttk.Label(self.main_frame, text=f"{app.capitalize()} -> {cred_data['username']}", font=('Consolas', 12, 'bold'), foreground=self.ACCENT_COLOR).pack(pady=10)
+        ttk.Label(self.main_frame, text=f"{app.capitalize()} -> {cred_data['username']}", font=('Consolas', 12, 'bold'), foreground=self.APP_COLOR).pack(pady=10)
         
         btn_frame = ttk.Frame(self.main_frame)
         btn_frame.pack(pady=20)
@@ -440,7 +440,7 @@ class PasswordFillerGUI:
     
     def show_inline_message(self, message, is_error=True, duration=3000):
         if hasattr(self, 'message_label'):
-            color = '#ff6b6b' if is_error else self.ACCENT_COLOR
+            color = '#ff6b6b' if is_error else self.APP_COLOR
             self.message_label.config(text=message, foreground=color)
             self.root.after(duration, lambda: self.message_label.config(text=""))
     
@@ -468,4 +468,8 @@ class PasswordFillerGUI:
         except Exception:
             pass
 
-PasswordFillerGUI()
+    def download_excel(self):
+        success, message = download(self.crypto)
+        self.show_inline_message(message, is_error=not success)
+    
+PasswordFillerGUI("1.0.0")
