@@ -242,12 +242,17 @@ class PasswordFillerGUI:
         cred = self.get_selected_cred()
         if cred:
             decrypted_password = self.crypto.decrypt_aes256(cred[1]['password'])
+            if cred[1].get('secretco'):
+                code = generate_totp(self.crypto.decrypt_aes256(cred[1]['secretco']))
             self.close_window()
             time.sleep(0.5)
             keyboard.write(cred[1]['username'])
             keyboard.press_and_release('tab')
             time.sleep(0.1)
             keyboard.write(decrypted_password)
+            keyboard.press_and_release('enter')
+            time.sleep(3)
+            keyboard.write(code)
     
     def fill_totp(self):
         cred = self.get_selected_cred()
@@ -405,6 +410,10 @@ class PasswordFillerGUI:
     
     def confirm_delete(self):
         cred = self.get_selected_cred()
+
+        self.root.bind('<Escape>', lambda e: self.edit_creds())
+        self.root.bind('<Return>', lambda e: self.delete_selected(app, cred_data['username']))
+
         if not cred:
             self.show_inline_message("Please select a credential to delete!")
             return

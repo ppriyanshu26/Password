@@ -51,7 +51,7 @@ def add_credential(app, username, password, secretco, crypto):
     else:
         creds[app] = [new_cred]
     save_creds(creds)
-    return True, f"Credential added for '{app}'!"
+    return True, f"Credential added for '{app.capitalize()}'!"
 
 def delete_credential(app, username):
     creds = load_creds()
@@ -62,7 +62,7 @@ def delete_credential(app, username):
     if not creds[app]:
         del creds[app]
     save_creds(creds)
-    return True, f"Credential deleted for '{app}'!"
+    return True, f"Credential deleted for '{app.capitalize()}'!"
 
 def download(crypto):
     try:
