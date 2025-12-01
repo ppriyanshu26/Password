@@ -6,7 +6,7 @@ import win32gui
 import win32con
 import win32api
 from crypto import Crypto
-from functions import generate_totp, load_creds, add_credential, delete_credential, download
+from functions import check_key, generate_totp, load_creds, add_credential, delete_credential, download
 
 class PasswordFillerGUI:
     APP_COLOR = '#F7DC6F'; BUTTON_COLOR = '#00CED1' 
@@ -75,6 +75,12 @@ class PasswordFillerGUI:
         key = self.key_entry.get().strip()
         if len(key) < 8:
             self.error_label.config(text="Key must be at least 8 characters!")
+            self.key_entry.delete(0, tk.END)
+            self.key_entry.focus_set()
+            return
+        check = check_key(key)
+        if not check:
+            self.error_label.config(text="Incorrect key! Please try again.")
             self.key_entry.delete(0, tk.END)
             self.key_entry.focus_set()
             return

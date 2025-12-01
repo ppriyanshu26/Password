@@ -2,7 +2,12 @@ altgraph==0.17.5
 cffi==2.0.0
 cryptography==46.0.3
 et_xmlfile==2.0.0
+jaraco.classes==3.4.0
+jaraco.context==6.0.1
+jaraco.functools==4.3.0
 keyboard==0.13.5
+keyring==25.7.0
+more-itertools==10.8.0
 openpyxl==3.1.5
 packaging==25.0
 pefile==2024.8.26

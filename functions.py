@@ -4,10 +4,25 @@ import time
 import os
 from openpyxl import Workbook
 from openpyxl.styles import Font
+import keyring
+import hashlib
+import getpass
 
 APP_FOLDER = os.path.join(os.getenv('APPDATA'), "Password Filler")
 os.makedirs(APP_FOLDER, exist_ok=True)
 FILE = os.path.join(APP_FOLDER, "credentials.json")
+
+SERVICE_NAME = "Password Filler"
+
+def check_key(password, service=SERVICE_NAME):
+    username = getpass.getuser()
+    stored = keyring.get_password(service, username)
+    if not stored:
+        username = getpass.getuser()
+        hashed = hashlib.sha256(password.encode()).hexdigest()
+        keyring.set_password(service, username, hashed)
+        return True
+    return hashlib.sha256(password.encode()).hexdigest() == stored
 
 if not os.path.exists(FILE):
     with open(FILE, "w") as f:
