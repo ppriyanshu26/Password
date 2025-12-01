@@ -31,8 +31,7 @@ class PasswordFillerGUI:
         self.root.geometry(f"450x400+{x}+{y}")
         self.root.deiconify()
         self.root.lift()
-        self.root.attributes('-topmost', True)
-        self.root.after(10, self._force_focus)
+        self.root.after(10, self.force_focus)
         
         style = ttk.Style()
         style.theme_use('clam')
@@ -87,7 +86,7 @@ class PasswordFillerGUI:
         self.crypto = Crypto(key)
         self.show_main_content()
     
-    def _get_color_for_app(self, index):
+    def app_color(self, index):
         return self.APP_COLOR
     
     def show_main_content(self):
@@ -130,15 +129,15 @@ class PasswordFillerGUI:
         self.matched_creds = []
         
         for idx, app in enumerate(self.credentials.keys()):
-            color = self._get_color_for_app(idx)
+            color = self.app_color(idx)
             self.app_colors[app] = color
         
             app_btn = tk.Button(self.apps_inner_frame,text=app.upper(),font=('Segoe UI', 10, 'bold'),bg='#16213e',fg=color,activebackground=color,activeforeground='#1a1a2e',relief='flat',cursor='hand2',padx=8,pady=8,width=10,anchor='center',highlightthickness=3,highlightbackground=color,highlightcolor=color,bd=0)
             app_btn.pack(fill=tk.X, pady=3, padx=2)
-            app_btn.bind('<Enter>', lambda e, b=app_btn, c=color: self._on_app_hover(b, True, c))
-            app_btn.bind('<Leave>', lambda e, b=app_btn, c=color: self._on_app_hover(b, False, c))
+            app_btn.bind('<Enter>', lambda e, b=app_btn, c=color: self.app_hover(b, True, c))
+            app_btn.bind('<Leave>', lambda e, b=app_btn, c=color: self.app_hover(b, False, c))
             app_btn.bind('<MouseWheel>', _on_apps_mousewheel)
-            app_btn.configure(command=lambda a=app, b=app_btn: self._select_app(a, b))
+            app_btn.configure(command=lambda a=app, b=app_btn: self.select_app(a, b))
             self.app_buttons[app] = app_btn
         btn_frame = ttk.Frame(self.main_frame)
         btn_frame.pack(fill=tk.X, pady=5)
@@ -161,14 +160,14 @@ class PasswordFillerGUI:
         self.message_label = ttk.Label(self.main_frame, text="", style='Error.TLabel')
         self.message_label.pack(pady=(5, 0))
     
-    def _on_app_hover(self, btn, entering, color):
+    def app_hover(self, btn, entering, color):
         if btn != self.selected_app_btn:
             if entering:
                 btn.configure(bg=color, fg='#1a1a2e')
             else:
                 btn.configure(bg='#16213e', fg=color)
     
-    def _select_app(self, app, btn):
+    def select_app(self, app, btn):
         if self.selected_app_btn:
             old_color = self.app_colors.get(self.selected_app, '#4ECDC4')
             self.selected_app_btn.configure(bg='#16213e', fg=old_color)
@@ -187,7 +186,7 @@ class PasswordFillerGUI:
         
         close_btn = tk.Button(header_frame, text="✕", font=('Segoe UI', 14, 'bold'),bg='#1a1a2e', fg='#FF3333', activebackground='#FF3333', activeforeground='white',relief='flat', cursor='hand2', padx=5)
         close_btn.pack(side=tk.RIGHT)
-        close_btn.bind('<Button-1>', lambda e: self._close_users_panel())
+        close_btn.bind('<Button-1>', lambda e: self.close_users())
         
         users_list_frame = ttk.Frame(self.users_frame)
         users_list_frame.pack(fill=tk.BOTH, expand=True)
@@ -213,7 +212,7 @@ class PasswordFillerGUI:
         
         self.cred_listbox.focus_set()
     
-    def _close_users_panel(self):
+    def close_users(self):
         self.users_frame.pack_forget()
         if self.selected_app_btn:
             old_color = self.app_colors.get(self.selected_app, '#4ECDC4')
@@ -227,11 +226,11 @@ class PasswordFillerGUI:
     
     def get_selected_cred(self):
         if not hasattr(self, 'cred_listbox') or not self.matched_creds:
-            self.show_inline_message("Please select an app and username first!", is_error=True)
+            self.show_message("Please select an app and username first!", is_error=True)
             return None
         selection = self.cred_listbox.curselection()
         if not selection:
-            self.show_inline_message("Please select a credential!", is_error=True)
+            self.show_message("Please select a credential!", is_error=True)
             return None
         idx = selection[0]
         if idx < len(self.matched_creds):
@@ -242,8 +241,6 @@ class PasswordFillerGUI:
         cred = self.get_selected_cred()
         if cred:
             decrypted_password = self.crypto.decrypt_aes256(cred[1]['password'])
-            if cred[1].get('secretco'):
-                code = generate_totp(self.crypto.decrypt_aes256(cred[1]['secretco']))
             self.close_window()
             time.sleep(0.5)
             keyboard.write(cred[1]['username'])
@@ -251,9 +248,7 @@ class PasswordFillerGUI:
             time.sleep(0.1)
             keyboard.write(decrypted_password)
             keyboard.press_and_release('enter')
-            time.sleep(3)
-            keyboard.write(code)
-    
+
     def fill_totp(self):
         cred = self.get_selected_cred()
         if cred:
@@ -264,7 +259,7 @@ class PasswordFillerGUI:
                 time.sleep(0.5)
                 keyboard.write(code)
             else:
-                self.show_inline_message("No TOTP assigned for this credential!", is_error=True)
+                self.show_message("No TOTP assigned for this credential!", is_error=True)
     
     def edit_creds(self):
         for widget in self.main_frame.winfo_children():
@@ -289,7 +284,7 @@ class PasswordFillerGUI:
         
         self.app_dropdown = ttk.Combobox(dropdown_frame, textvariable=self.edit_app_var,values=app_names, state='readonly',font=('Segoe UI', 12, 'bold'), width=25,style='App.TCombobox')
         self.app_dropdown.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        self.app_dropdown.bind('<<ComboboxSelected>>', self._on_edit_app_selected)
+        self.app_dropdown.bind('<<ComboboxSelected>>', self.app_selected)
         
         list_frame = ttk.Frame(self.main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=10, padx=10)
@@ -312,7 +307,7 @@ class PasswordFillerGUI:
         
         if app_names:
             self.app_dropdown.current(0)
-            self._on_edit_app_selected(None)
+            self.app_selected(None)
         
         btn_frame = ttk.Frame(self.main_frame)
         btn_frame.pack(fill=tk.X, pady=5, padx=10)
@@ -329,7 +324,7 @@ class PasswordFillerGUI:
         self.message_label = ttk.Label(self.main_frame, text="", style='Error.TLabel')
         self.message_label.pack(pady=(5, 0))
     
-    def _on_edit_app_selected(self, event):
+    def app_selected(self, event):
         selected_app = self.edit_app_var.get()
         
         self.cred_listbox.delete(0, tk.END)
@@ -353,7 +348,7 @@ class PasswordFillerGUI:
             widget.destroy()
         
         self.root.bind('<Escape>', lambda e: self.edit_creds())
-        self.root.bind('<Return>', lambda e: self.save_new_credential())
+        self.root.bind('<Return>', lambda e: self.save_new_cred())
         
         ttk.Label(self.main_frame, text="➕ Add Credential", style='Title.TLabel').pack(pady=(0, 10))
         
@@ -379,7 +374,7 @@ class PasswordFillerGUI:
         btn_frame = ttk.Frame(self.main_frame)
         btn_frame.pack(fill=tk.X, pady=10, padx=20)
         
-        save_btn = tk.Button(btn_frame, text="💾 Save", command=self.save_new_credential,bg=self.BUTTON_COLOR, fg='#1a1a2e', font=('Segoe UI', 9, 'bold'),relief='flat', cursor='hand2', width=10, pady=4)
+        save_btn = tk.Button(btn_frame, text="💾 Save", command=self.save_new_cred,bg=self.BUTTON_COLOR, fg='#1a1a2e', font=('Segoe UI', 9, 'bold'),relief='flat', cursor='hand2', width=10, pady=4)
         save_btn.pack(side=tk.LEFT, padx=2)
         
         cancel_btn = tk.Button(btn_frame, text="❌ Cancel", command=self.edit_creds,bg=self.BUTTON_COLOR, fg='#1a1a2e', font=('Segoe UI', 9, 'bold'),relief='flat', cursor='hand2', width=10, pady=4)
@@ -390,23 +385,23 @@ class PasswordFillerGUI:
         
         self.app_entry.focus_set()
     
-    def save_new_credential(self):
+    def save_new_cred(self):
         app = self.app_entry.get().strip()
         username = self.username_entry.get().strip()
         password = self.password_entry.get().strip()
         secret = self.secret_entry.get().strip()
         
         if not app or not username or not password:
-            self.show_inline_message("App, username and password are required!")
+            self.show_message("App, username and password are required!")
             return
         success, message = add_credential(app, username, password, secret, self.crypto)
         
         if success:
             self.credentials = load_creds()
-            self.show_inline_message(message, is_error=False)
+            self.show_message(message, is_error=False)
             self.root.after(1000, self.edit_creds)
         else:
-            self.show_inline_message(message)
+            self.show_message(message)
     
     def confirm_delete(self):
         cred = self.get_selected_cred()
@@ -415,7 +410,7 @@ class PasswordFillerGUI:
         self.root.bind('<Return>', lambda e: self.delete_selected(app, cred_data['username']))
 
         if not cred:
-            self.show_inline_message("Please select a credential to delete!")
+            self.show_message("Please select a credential to delete!")
             return
         
         for widget in self.main_frame.winfo_children():
@@ -444,16 +439,16 @@ class PasswordFillerGUI:
         success, message = delete_credential(app, username)
         if success:
             self.credentials = load_creds()
-            self.show_inline_message(message, is_error=False)
+            self.show_message(message, is_error=False)
             self.root.after(1000, self.edit_creds)
         else:
-            self.show_inline_message(message)
+            self.show_message(message)
     
     def lock(self):
         self.crypto = None
         self.show_lock_screen()
     
-    def show_inline_message(self, message, is_error=True, duration=3000):
+    def show_message(self, message, is_error=True, duration=3000):
         if hasattr(self, 'message_label'):
             color = '#ff6b6b' if is_error else self.APP_COLOR
             self.message_label.config(text=message, foreground=color)
@@ -465,7 +460,7 @@ class PasswordFillerGUI:
             self.root = None
         self.crypto = None
     
-    def _force_focus(self):
+    def force_focus(self):
         try:
             hwnd = win32gui.FindWindow(None, "Password Filler")
             if hwnd:
@@ -485,6 +480,6 @@ class PasswordFillerGUI:
 
     def download_excel(self):
         success, message = download(self.crypto)
-        self.show_inline_message(message, is_error=not success)
+        self.show_message(message, is_error=not success)
     
 PasswordFillerGUI("1.0.0")
