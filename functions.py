@@ -1,6 +1,8 @@
 import json
 import pyotp
 import time
+import keyboard
+import pyperclip
 import os
 from openpyxl import Workbook
 from openpyxl.styles import Font
@@ -14,6 +16,19 @@ FILE = os.path.join(APP_FOLDER, "credentials.json")
 
 SERVICE_NAME = "Password Filler"
 
+if not os.path.exists(FILE):
+    with open(FILE, "w") as f:
+        json.dump({}, f, indent=4)
+
+def grab_user():
+    time.sleep(0.2)
+    keyboard.press_and_release("ctrl+a")
+    time.sleep(0.2)
+    keyboard.press_and_release("ctrl+c")
+    time.sleep(0.2)
+    keyboard.press_and_release("tab")
+    return pyperclip.paste()
+
 def check_key(password, service=SERVICE_NAME):
     username = getpass.getuser()
     stored = keyring.get_password(service, username)
@@ -23,10 +38,6 @@ def check_key(password, service=SERVICE_NAME):
         keyring.set_password(service, username, hashed)
         return True
     return hashlib.sha256(password.encode()).hexdigest() == stored
-
-if not os.path.exists(FILE):
-    with open(FILE, "w") as f:
-        json.dump({}, f, indent=4)
 
 def generate_totp(secret):
     return pyotp.TOTP(secret).now()
