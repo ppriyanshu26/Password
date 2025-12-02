@@ -1,35 +1,27 @@
 import hashlib
 import base64
 import os
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import padding
-from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 class Crypto:
-    def __init__(self, key_str):
-        self.key = hashlib.sha256(key_str.encode()).digest()
+    def __init__(self, key):
+        self.key = key
     
-    def encrypt_aes256(self, plaintext):
-        iv = os.urandom(16)
-        
-        padder = padding.PKCS7(128).padder()
-        padded_data = padder.update(plaintext.encode()) + padder.finalize()
-        
-        cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv), backend=default_backend())
-        encryptor = cipher.encryptor()
-        ciphertext = encryptor.update(padded_data) + encryptor.finalize()
-        
-        return base64.urlsafe_b64encode(iv + ciphertext).decode()
+    def encrypt_aes(self, plaintext):
+        key = hashlib.sha256(self.key.encode()).digest()
+        nonce = os.urandom(12)
+        aesgcm = AESGCM(key)
+        ciphertext = aesgcm.encrypt(nonce, plaintext.encode(), None)
+        return base64.urlsafe_b64encode(nonce + ciphertext).decode()
 
-    def decrypt_aes256(self, ciphertext_b64):
-        raw = base64.urlsafe_b64decode(ciphertext_b64)
-        iv, ciphertext = raw[:16], raw[16:]
-        
-        cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv), backend=default_backend())
-        decryptor = cipher.decryptor()
-        
-        padded_plaintext = decryptor.update(ciphertext) + decryptor.finalize()
-        unpadder = padding.PKCS7(128).unpadder()
-        plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
-        
-        return plaintext.decode()
+    def decrypt_aes(self, ciphertext):
+        try:
+            key = hashlib.sha256(self.key.encode()).digest()
+            raw = base64.urlsafe_b64decode(ciphertext)
+            nonce = raw[:12]
+            encrypted_data = raw[12:]
+            aesgcm = AESGCM(key)
+            plaintext = aesgcm.decrypt(nonce, encrypted_data, None)
+            return plaintext.decode()
+        except Exception:
+            return None
