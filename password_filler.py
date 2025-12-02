@@ -11,6 +11,52 @@ import json
 FILE = "credentials.json"
 current_popup = None
 
+def type_username(u):
+    keyboard.write(u)
+
+def type_password(p):
+    keyboard.write(p)
+
+def type_both(u, p):
+    keyboard.write(u)
+    keyboard.press_and_release('tab')
+    keyboard.write(p)
+
+def type_totp(t):
+    keyboard.write(t)
+
+def show_submenu(parent, x, y, username, password, totp):
+    menu = tk.Toplevel()
+    menu.overrideredirect(True)
+    menu.attributes("-topmost", True)
+    menu.attributes("-alpha", 0.92)
+    menu.configure(bg="#111")
+
+    menu.geometry(f"+{x}+{y}")
+
+    def close():
+        try: menu.destroy()
+        except: pass
+
+    btn = lambda text, cmd: tk.Button(
+        menu, text=text, bg="#222", fg="white",
+        activebackground="#333",
+        activeforeground="white",
+        bd=0, padx=12, pady=4,
+        command=lambda: (cmd(), close())
+    ).pack(fill="x")
+
+    btn("Type Username", lambda: type_username(username))
+    btn("Type Password", lambda: type_password(password))
+    btn("Type Both", lambda: type_both(username, password))
+    if totp:
+        btn("Type TOTP", lambda: type_totp(totp))
+
+    tk.Button(menu, text="Close", bg="#222", fg="white",
+              command=close, bd=0).pack(fill="x")
+
+    return menu
+
 def is_text_input_focused():
     hwnd = win32gui.GetForegroundWindow()
     tid, pid = win32process.GetWindowThreadProcessId(hwnd)
@@ -52,31 +98,76 @@ def get_usernames():
 def show_menu():
     global current_popup
     if current_popup is not None:
-        try:
-            current_popup.destroy()
-        except:
-            pass
+        try: current_popup.destroy()
+        except: pass
         current_popup = None
+
     x, y = pyautogui.position()
 
     win = tk.Toplevel()
     win.overrideredirect(True)
     win.attributes("-topmost", True)
-    win.geometry(f"+{x+10}+{y+10}")
+    win.attributes("-alpha", 0.85)          # GLASS EFFECT HERE
+    win.configure(bg="#1a1a1a")
+    win.geometry(f"+{x+12}+{y+12}")
+
     current_popup = win
 
-    frame = tk.Frame(win, bg="#1e1e1e", padx=10, pady=10)
+    frame = tk.Frame(win, bg="#1a1a1a", padx=10, pady=10)
     frame.pack()
-    tk.Label(frame, text="Menu", fg="white", bg="#1e1e1e", font=("Arial", 12, "bold")).pack(anchor="w", pady=(0, 10))
 
-    user_options = get_usernames()
-    if not user_options:
-        tk.Label(frame, text="No accounts found", fg="red", bg="#1e1e1e", font=("Arial", 10, "italic")).pack(pady=5)
+    tk.Label(frame, text="Accounts", fg="white",
+             bg="#1a1a1a", font=("Segoe UI", 11, "bold")
+             ).pack(anchor="w", pady=(0,8))
+
+    accounts = get_usernames()
+
+    if not accounts:
+        tk.Label(frame, text="No accounts found", fg="#ff4444",
+                 bg="#1a1a1a", font=("Segoe UI", 10, "italic")
+                 ).pack(pady=6)
     else:
-        for label, func in user_options:
-            tk.Button(frame, text=label, width=20, command=lambda f=func: (f(), win.destroy())).pack(pady=3)
+        creds = load_creds()
+        window_title = get_window().lower()
+        first_name = window_title.split(" - ")[0].strip()
 
-    tk.Button(frame, text="Close", width=20, command=win.destroy).pack(pady=8)
+        selected_service = None
+        for service in creds:
+            if service.lower() in first_name: 
+                selected_service = creds[service]
+                break
+
+        for a in selected_service:
+            username = a["username"]
+            password = a.get("password", "")
+            totp = a.get("totp", "")
+
+            row = tk.Frame(frame, bg="#1a1a1a")
+            row.pack(fill="x", pady=3)
+
+            tk.Label(row, text=username, fg="white", bg="#1a1a1a",
+                     font=("Segoe UI", 10)).pack(side="left")
+
+            # ⋮ three-dot menu
+            def make_menu(u=username, p=password, t=totp):
+                mx = win.winfo_x() + 160
+                my = win.winfo_y() + row.winfo_y() + 25
+                show_submenu(win, mx, my, u, p, t)
+
+            tk.Button(
+                row,
+                text="⋮",
+                fg="white", bg="#1a1a1a",
+                activebackground="#333",
+                bd=0,
+                font=("Segoe UI", 14),
+                command=make_menu
+            ).pack(side="right")
+
+    tk.Button(frame, text="Close", width=20,
+              command=win.destroy,
+              bg="#222", fg="white", bd=0
+              ).pack(pady=6)
 
 def hotkeys():
     while True:
