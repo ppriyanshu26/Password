@@ -1,6 +1,7 @@
 import json
 import keyboard
 import win32gui
+import re
 
 FILE = "credentials.json"
 
@@ -10,12 +11,15 @@ def load_creds():
 
 def get_matching_accounts():
     title = get_window_title().lower()
-    first = title.split(" - ")[0].strip()
+    print(title)
+    parts = [p.strip() for p in re.split(r" - | \| | • ", title)]
+    print(parts)
     data = load_creds()
 
     for service, accounts in data.items():
-        if service.lower() in first or first in service.lower():
-            return accounts
+        for part in parts:
+            if service.lower() in part or part in service.lower():
+                return accounts
     return []
 
 def type_username(u, close_callback):
