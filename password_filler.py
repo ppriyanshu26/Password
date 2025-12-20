@@ -21,6 +21,7 @@ def show_menu():
     close_popup()
     x, y = pyautogui.position()
     win = tk.Toplevel()
+    win.withdraw()
     set_popup(win)
     win.overrideredirect(True)
     win.attributes("-topmost", True)
@@ -35,6 +36,7 @@ def show_menu():
     if not accounts:
         tk.Label(frame, text="No accounts found", fg="#ff4444", bg="#1a1a1a", font=("Segoe UI", 10, "italic")).pack(pady=6)
         tk.Button(frame, text="Close", width=20, command=close_popup, bg="#222", fg="white", activebackground="#333", activeforeground="white", bd=0).pack(pady=(8, 0))
+        win.deiconify()
         return
     
     tk.Label(frame, text="Enter Key:", fg="white", bg="#1a1a1a", font=("Segoe UI", 10)).pack(anchor="w")
@@ -95,6 +97,7 @@ def show_menu():
     
     tk.Button(frame, text="Unlock", width=20, command=show_accounts, bg="#444", fg="white", activebackground="#555", activeforeground="white", bd=0).pack(pady=(4, 0))
     tk.Button(frame, text="Close", width=20, command=close_popup, bg="#222", fg="white", activebackground="#333", activeforeground="white", bd=0).pack(pady=(8, 0))
+    win.deiconify()
 
 def hotkeys():
     with auto.UIAutomationInitializerInThread():

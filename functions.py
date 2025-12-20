@@ -11,9 +11,7 @@ def load_creds():
 
 def get_matching_accounts():
     title = get_window_title().lower()
-    print(title)
     parts = [p.strip() for p in re.split(r" - | \| | • | · ", title)]
-    print(parts)
     data = load_creds()
 
     for service, accounts in data.items():
