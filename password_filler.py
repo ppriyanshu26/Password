@@ -16,6 +16,8 @@ def show_menu():
     if not name_words & TRIGGER_KEYWORDS:
         return
     
+    accounts = get_matching_accounts()
+    
     close_popup()
     x, y = pyautogui.position()
     win = tk.Toplevel()
@@ -29,18 +31,37 @@ def show_menu():
     bind_popup_events(win)
     frame = tk.Frame(win, bg="#1a1a1a", padx=10, pady=10)
     frame.pack()
-    tk.Label(frame, text="Accounts", fg="white", bg="#1a1a1a", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 8))
-
-    accounts = get_matching_accounts()
+    
     if not accounts:
         tk.Label(frame, text="No accounts found", fg="#ff4444", bg="#1a1a1a", font=("Segoe UI", 10, "italic")).pack(pady=6)
-    else:
+        tk.Button(frame, text="Close", width=20, command=close_popup, bg="#222", fg="white", activebackground="#333", activeforeground="white", bd=0).pack(pady=(8, 0))
+        return
+    
+    tk.Label(frame, text="Enter Key:", fg="white", bg="#1a1a1a", font=("Segoe UI", 10)).pack(anchor="w")
+    key_entry = tk.Entry(frame, show="*", bg="#333", fg="white", insertbackground="white", bd=0, font=("Segoe UI", 10))
+    key_entry.pack(fill="x", pady=(4, 8))
+    key_entry.focus_set()
+    
+    accounts_frame = tk.Frame(frame, bg="#1a1a1a")
+    
+    def show_accounts(event=None):
+        key = key_entry.get()
+        if not key:
+            return
+        
+        crypto = Crypto(key)
+        
+        for widget in accounts_frame.winfo_children():
+            widget.destroy()
+        
+        tk.Label(accounts_frame, text="Accounts", fg="white", bg="#1a1a1a", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 8))
+        
         for acc in accounts:
             username = acc["username"]
-            password = acc.get("password", "")
-            totp = acc.get("secretco", "")
+            password = crypto.decrypt_aes(acc.get("password", "")) or ""
+            totp = crypto.decrypt_aes(acc.get("secretco", "")) if acc.get("secretco") else ""
 
-            row = tk.Frame(frame, bg="#1a1a1a")
+            row = tk.Frame(accounts_frame, bg="#1a1a1a")
             row.pack(fill="x", pady=4)
 
             tk.Label(row, text=username, fg="white", bg="#1a1a1a", font=("Segoe UI", 10)).pack(side="left", padx=(0, 10))
@@ -66,7 +87,13 @@ def show_menu():
                 btn_totp = tk.Button(icons_frame, text="🔢", command=lambda t=totp: type_totp(t, close_popup), **icon_style)
                 btn_totp.pack(side="left", padx=1)
                 Btn(btn_totp, "Type TOTP")
-
+        
+        accounts_frame.pack(fill="x")
+        key_entry.config(state="disabled")
+    
+    key_entry.bind("<Return>", show_accounts)
+    
+    tk.Button(frame, text="Unlock", width=20, command=show_accounts, bg="#444", fg="white", activebackground="#555", activeforeground="white", bd=0).pack(pady=(4, 0))
     tk.Button(frame, text="Close", width=20, command=close_popup, bg="#222", fg="white", activebackground="#333", activeforeground="white", bd=0).pack(pady=(8, 0))
 
 def hotkeys():
