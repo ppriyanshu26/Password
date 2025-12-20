@@ -2,12 +2,20 @@ import tkinter as tk
 import pyautogui
 import threading
 import keyboard
+import uiautomation as auto
 from functions import get_matching_accounts, type_username, type_password, type_both, type_totp
 from tools import Btn
 from popup import close_popup, set_popup, bind_popup_events
 from crypto import Crypto
 
+TRIGGER_KEYWORDS = {"code", "mfa", "email", "password", "username", "phone", "verification", "authenticator", "authenticate", "number", "user name"}
+
 def show_menu():
+    element = auto.GetFocusedControl()
+    name_words = set(element.Name.lower().split())
+    if not name_words & TRIGGER_KEYWORDS:
+        return
+    
     close_popup()
     x, y = pyautogui.position()
     win = tk.Toplevel()
@@ -62,9 +70,10 @@ def show_menu():
     tk.Button(frame, text="Close", width=20, command=close_popup, bg="#222", fg="white", activebackground="#333", activeforeground="white", bd=0).pack(pady=(8, 0))
 
 def hotkeys():
-    while True:
-        keyboard.wait("ctrl+shift+l")
-        show_menu()
+    with auto.UIAutomationInitializerInThread():
+        while True:
+            keyboard.wait("ctrl+shift+l")
+            show_menu()
 
 threading.Thread(target=hotkeys, daemon=True).start()
 
