@@ -1,9 +1,7 @@
-WINDOW_TITLE = "Credential Manager"
-WINDOW_SIZE = "450x400"
-
+from config import WINDOW_TITLE, WINDOW_SIZE
 import tkinter as tk
 from tkinter import ttk
-from functions import (load_master_key_hash, save_master_key_hash, verify_master_key,
+from core import (load_master_key_hash, save_master_key_hash, verify_master_key,
                        get_platforms, get_accounts_for_platform, add_credential,
                        delete_credential, update_credential)
 
@@ -294,6 +292,8 @@ class CredentialEditorApp:
         self.root.mainloop()
 
 def open_credential_editor(parent=None):
+    from popup import close_popup
+    close_popup()
     return CredentialEditorApp(parent)
 
 if __name__ == "__main__":

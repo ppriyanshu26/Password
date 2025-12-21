@@ -1,18 +1,18 @@
 import json
 import keyboard
-import win32gui
 import re
-from crypto import Crypto
-
-FILE = "credentials.json"
-MASTER_KEY_HASH_FILE = "masterkey.hash"
+from config import CREDENTIALS_FILE, MASTER_KEY_HASH_FILE
+from utils import Crypto, get_window_title
 
 def load_creds():
-    with open(FILE, "r") as f:
-        return json.load(f)
+    try:
+        with open(CREDENTIALS_FILE, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
 
 def save_creds(data):
-    with open(FILE, "w") as f:
+    with open(CREDENTIALS_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
 def load_master_key_hash():
@@ -125,7 +125,3 @@ def type_totp(t, close_callback):
     close_callback()
     keyboard.write(t)
     keyboard.press_and_release("enter")
-
-def get_window_title():
-    hwnd = win32gui.GetForegroundWindow()
-    return win32gui.GetWindowText(hwnd)

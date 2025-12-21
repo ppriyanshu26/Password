@@ -19,7 +19,7 @@ def set_popup(popup):
     global current_popup
     current_popup = popup
 
-def bind_popup_events(window):
+def bind_popup_events(window, entry_widget=None):
     def on_focus_out(event):
         window.after(50, check_and_close)
     
@@ -36,7 +36,18 @@ def bind_popup_events(window):
     
     window.bind("<FocusOut>", on_focus_out)
     window.bind("<Escape>", on_escape)
-    window.after(10, lambda: safe_focus(window))
+    
+    def do_focus():
+        try:
+            window.grab_set()
+            window.focus_force()
+            window.lift()
+            if entry_widget:
+                entry_widget.focus_set()
+        except tk.TclError:
+            pass
+    
+    window.after(100, do_focus)
 
 def safe_focus(window):
     try:

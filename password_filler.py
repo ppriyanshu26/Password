@@ -1,15 +1,20 @@
 import tkinter as tk
+root = tk.Tk()
+root.withdraw()
+
+import time
 import pyautogui
 import threading
 import keyboard
 import uiautomation as auto
-from functions import get_matching_accounts, type_username, type_password, type_both, type_totp
-from tools import Btn
+from core import get_matching_accounts, type_username, type_password, type_both, type_totp
+from utils import Btn, Crypto
 from popup import close_popup, set_popup, bind_popup_events
-from crypto import Crypto
 from credential_editor import open_credential_editor
+from config import TRIGGER_KEYWORDS, CACHE_DURATION
 
-TRIGGER_KEYWORDS = {"code", "mfa", "email", "password", "username", "phone", "verification", "authenticator", "authenticate", "number", "user name"}
+_cached_key = None
+_cached_time = 0
 
 def show_menu():
     element = auto.GetFocusedControl()
@@ -34,6 +39,11 @@ def show_menu():
     frame = tk.Frame(win, bg="#1a1a1a", padx=10, pady=10)
     frame.pack()
     
+    edit_creds_label = tk.Label(frame, text="EDIT CREDS", fg="#4CAF50", bg="#1a1a1a", 
+                                font=("Segoe UI", 9, "underline"), cursor="hand2")
+    edit_creds_label.pack(anchor="e", pady=(0, 5))
+    edit_creds_label.bind("<Button-1>", lambda e: open_credential_editor(root))
+    
     if not accounts:
         tk.Label(frame, text="No accounts found", fg="#ff4444", bg="#1a1a1a", font=("Segoe UI", 10, "italic")).pack(pady=6)
         tk.Button(frame, text="Close", width=20, command=close_popup, bg="#222", fg="white", activebackground="#333", activeforeground="white", bd=0).pack(pady=(8, 0))
@@ -43,32 +53,26 @@ def show_menu():
     tk.Label(frame, text="Enter Key:", fg="white", bg="#1a1a1a", font=("Segoe UI", 10)).pack(anchor="w")
     key_entry = tk.Entry(frame, show="*", bg="#333", fg="white", insertbackground="white", bd=0, font=("Segoe UI", 10))
     key_entry.pack(fill="x", pady=(4, 8))
-    key_entry.focus_set()
     
     accounts_frame = tk.Frame(frame, bg="#1a1a1a")
     
     def show_accounts(event=None):
+        global _cached_key, _cached_time
         key = key_entry.get()
         if not key:
             return
+        _cached_key = key
+        _cached_time = time.time()
         
         crypto = Crypto(key)
         
         for widget in accounts_frame.winfo_children():
             widget.destroy()
         
-        # Header with Accounts label and Edit button
         header_frame = tk.Frame(accounts_frame, bg="#1a1a1a")
         header_frame.pack(fill="x", pady=(0, 8))
         
         tk.Label(header_frame, text="Accounts", fg="white", bg="#1a1a1a", font=("Segoe UI", 11, "bold")).pack(side="left")
-        
-        edit_btn = tk.Button(header_frame, text="✏️", command=lambda: open_credential_editor(win),
-                            bg="#1a1a1a", fg="#888", activebackground="#333", activeforeground="white",
-                            bd=0, font=("Segoe UI", 9), cursor="hand2", width=2)
-        edit_btn.pack(side="left", padx=(8, 0))
-        Btn(edit_btn, "Edit Credentials")
-
         
         for acc in accounts:
             username = acc["username"]
@@ -107,8 +111,13 @@ def show_menu():
     
     key_entry.bind("<Return>", show_accounts)
     
+    if _cached_key and (time.time() - _cached_time) < CACHE_DURATION:
+        key_entry.insert(0, _cached_key)
+        show_accounts()
+    
     tk.Button(frame, text="Unlock", width=20, command=show_accounts, bg="#444", fg="white", activebackground="#555", activeforeground="white", bd=0).pack(pady=(4, 0))
     tk.Button(frame, text="Close", width=20, command=close_popup, bg="#222", fg="white", activebackground="#333", activeforeground="white", bd=0).pack(pady=(8, 0))
+    bind_popup_events(win, key_entry)
     win.deiconify()
 
 def hotkeys():
@@ -119,6 +128,9 @@ def hotkeys():
 
 threading.Thread(target=hotkeys, daemon=True).start()
 
-root = tk.Tk()
-root.withdraw()
+_warmup = tk.Toplevel()
+_warmup.withdraw()
+_warmup.destroy()
+root.update()
+
 root.mainloop()
