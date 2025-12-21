@@ -7,6 +7,7 @@ from functions import get_matching_accounts, type_username, type_password, type_
 from tools import Btn
 from popup import close_popup, set_popup, bind_popup_events
 from crypto import Crypto
+from credential_editor import open_credential_editor
 
 TRIGGER_KEYWORDS = {"code", "mfa", "email", "password", "username", "phone", "verification", "authenticator", "authenticate", "number", "user name"}
 
@@ -56,7 +57,18 @@ def show_menu():
         for widget in accounts_frame.winfo_children():
             widget.destroy()
         
-        tk.Label(accounts_frame, text="Accounts", fg="white", bg="#1a1a1a", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 8))
+        # Header with Accounts label and Edit button
+        header_frame = tk.Frame(accounts_frame, bg="#1a1a1a")
+        header_frame.pack(fill="x", pady=(0, 8))
+        
+        tk.Label(header_frame, text="Accounts", fg="white", bg="#1a1a1a", font=("Segoe UI", 11, "bold")).pack(side="left")
+        
+        edit_btn = tk.Button(header_frame, text="✏️", command=lambda: open_credential_editor(win),
+                            bg="#1a1a1a", fg="#888", activebackground="#333", activeforeground="white",
+                            bd=0, font=("Segoe UI", 9), cursor="hand2", width=2)
+        edit_btn.pack(side="left", padx=(8, 0))
+        Btn(edit_btn, "Edit Credentials")
+
         
         for acc in accounts:
             username = acc["username"]
