@@ -1,9 +1,11 @@
 import tkinter as tk
+import keyboard
 import win32gui
 import win32con
 import win32process
 import ctypes
 import time
+import pyperclip
 from config import COLOR_BG_MEDIUM, COLOR_ACCENT
 from classes import TooltipButton
 from credentials import verify_master_key, master_key_exists, save_master_key
@@ -50,14 +52,14 @@ def create_account_frame(parent, account, idx, on_click_callback=None, popup_ins
     buttons_frame = tk.Frame(frame, bg=COLOR_BG_MEDIUM)
     buttons_frame.pack(side="right", padx=10, pady=8)
     
-    btn1 = TooltipButton(buttons_frame, text="Button 1", emoji="📋", tooltip_text="Copy Creds", command=lambda: button_click(1, account, popup_instance))
+    btn1 = TooltipButton(buttons_frame, text="Button 1", emoji="📋", tooltip_text="Fill Credentials", command=lambda: button_click(1, account, popup_instance))
     btn1.pack(side="left", padx=2)
     
-    btn2 = TooltipButton(buttons_frame, text="Button 2", emoji="🔑", tooltip_text="Fill Creds", command=lambda: button_click(2, account, popup_instance))
+    btn2 = TooltipButton(buttons_frame, text="Button 2", emoji="🔑", tooltip_text="Copy Credentials", command=lambda: button_click(2, account, popup_instance))
     btn2.pack(side="left", padx=2)
     
     has_mfa = account.get("mfa") and account.get("mfa").strip()
-    btn3 = TooltipButton(buttons_frame, text="Button 3", emoji="🔐", tooltip_text="2FA not configured" if not has_mfa else "Fill 2FA", command=lambda: button_click(3, account, popup_instance) if has_mfa else None, state="disabled" if not has_mfa else "normal")
+    btn3 = TooltipButton(buttons_frame, text="Button 3", emoji="🔐", tooltip_text="2FA not configured" if not has_mfa else "Fill 2FA code", command=lambda: button_click(3, account, popup_instance) if has_mfa else None, state="disabled" if not has_mfa else "normal")
     btn3.pack(side="left", padx=2)
     
     return frame
@@ -91,16 +93,6 @@ def verify_and_cache_master_key(key, cached_master_key_ref):
 
 def button_click(button_number, account, popup_instance):
     try:
-        if button_number == 1:
-            print(f"[Password Manager] Username: {account['username']}")
-            print(f"[Password Manager] Password: {account['password']}")
-        elif button_number == 2:
-            print(f"[Password Manager] Username: {account['username']}")
-            print(f"[Password Manager] Password: {account['password']}")
-        elif button_number == 3:
-            if account.get("mfa"):
-                print(f"[Password Manager] 2FA Code: {account['mfa']}")
-                
         if popup_instance and popup_instance.root:
             if popup_instance.previous_focus_hwnd:
                 try:
@@ -108,7 +100,22 @@ def button_click(button_number, account, popup_instance):
                 except:
                     pass
             popup_instance._close()
-        
+            time.sleep(0.1)
+        if button_number == 1:
+            keyboard.write(account['username'])
+            keyboard.press_and_release("tab")
+            keyboard.write(account['password'])
+            keyboard.press_and_release("enter")
+            print(f"[Password Manager] Credentials pasted for account: {account['service']} ({account['username']})")
+        elif button_number == 2:
+            credentials_text = f"{account['username']}\n{account['password']}"
+            pyperclip.copy(credentials_text)
+            print(f"[Password Manager] Credentials copied to clipboard for account: {account['service']}")
+        elif button_number == 3:
+            if account.get("mfa"):
+                keyboard.write(account['mfa'])
+                keyboard.press_and_release("enter")
+                print(f"[Password Manager] 2FA Code: {account['mfa']}")
         print(f"[Password Manager] Button {button_number} pressed for account: {account['service']} ({account['username']})")
     except Exception as e:
         print(f"[Password Manager] Error handling button click: {e}")

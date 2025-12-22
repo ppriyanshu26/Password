@@ -1,7 +1,7 @@
 APP_NAME = "Password Manager"
 APP_VERSION = "1.0.0"
 
-VAULT_FILE = "vault.json"
+VAULT_FILE = "credentials.json"
 HOTKEY = "ctrl+shift+l"
 
 MASTER_KEY_CACHE_TIMEOUT = 300
