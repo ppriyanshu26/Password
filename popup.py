@@ -3,10 +3,9 @@ from tkinter import ttk
 import pyotp
 import win32gui
 import time
-from credentials import verify_master_key, master_key_exists, save_master_key
+from credentials import master_key_exists
 from config import *
-from utils import force_foreground, create_account_frame, highlight_items, show_toast, verify_and_cache_master_key, on_account_button_click
-from classes import TooltipButton
+from utils import force_foreground, create_account_frame, highlight_items, verify_and_cache_master_key
 
 class PasswordPopup:
     cached_master_key = None; cached_master_key_time = None
@@ -32,31 +31,23 @@ class PasswordPopup:
         
         self._show_master_key_input()
         self.root.bind("<Escape>", self._close)
-        
         self.root.update_idletasks()
         width = WINDOW_WIDTH
         height = WINDOW_HEIGHT
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
-        
         x = max(0, min(x, screen_width - width))
         y = max(0, min(y, screen_height - height))
-        
         self.root.geometry(f"{width}x{height}+{x}+{y}")
-        
         self.root.deiconify()
         self.root.lift()
         self.root.attributes("-topmost", True)
-        
         self.root.focus_force()
-        
         self._check_click_outside()
-        
         self.root.after(10, self._focus_entry)
         self.root.after(50, self._focus_entry)
         self.root.after(100, self._focus_entry)
         self.root.after(200, self._focus_entry)
-        
         self.root.mainloop()
     
     def _focus_entry(self):
@@ -64,7 +55,6 @@ class PasswordPopup:
             return
         if self.master_entry and self.master_entry.winfo_exists():
             force_foreground(self.root)
-            
             self.root.lift()
             self.root.attributes("-topmost", True)
             self.root.focus_force()
@@ -157,11 +147,7 @@ class PasswordPopup:
             canvas = tk.Canvas(content_frame, bg=COLOR_BG_DARK, highlightthickness=0)
             scrollbar = ttk.Scrollbar(content_frame, orient="vertical", command=canvas.yview)
             scrollable_frame = tk.Frame(canvas, bg=COLOR_BG_DARK)
-            
-            scrollable_frame.bind(
-                "<Configure>",
-                lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-            )
+            scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
             
             canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
             canvas.configure(yscrollcommand=scrollbar.set)
@@ -180,17 +166,12 @@ class PasswordPopup:
             canvas = tk.Canvas(content_frame, bg=COLOR_BG_DARK, highlightthickness=0)
             scrollbar = ttk.Scrollbar(content_frame, orient="vertical", command=canvas.yview)
             scrollable_frame = tk.Frame(canvas, bg=COLOR_BG_DARK)
-            
-            scrollable_frame.bind(
-                "<Configure>",
-                lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-            )
+            scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
             
             canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
             canvas.configure(yscrollcommand=scrollbar.set)
             
             self.account_frames = []
-            
             matched_accounts = self.accounts[:]
             other_accounts = []
             

@@ -5,6 +5,7 @@ import win32process
 import ctypes
 import time
 from config import COLOR_BG_MEDIUM, COLOR_ACCENT
+from classes import TooltipButton
 from credentials import verify_master_key, master_key_exists, save_master_key
 
 def force_foreground(root):
@@ -32,29 +33,13 @@ def create_account_frame(parent, account, idx, on_click_callback=None, popup_ins
     frame = tk.Frame(parent, bg=COLOR_BG_MEDIUM, cursor="hand2")
     frame.account_data = account
     frame.index = idx
-    
-    # Main content frame (left side with service and username)
     content_frame = tk.Frame(frame, bg=COLOR_BG_MEDIUM)
     content_frame.pack(side="left", fill="both", expand=True)
     
-    service_label = tk.Label(
-        content_frame,
-        text=f"🪪{account['service']}",
-        font=("Segoe UI", 10, "bold"),
-        bg=COLOR_BG_MEDIUM,
-        fg=COLOR_ACCENT,
-        anchor="w"
-    )
+    service_label = tk.Label(content_frame, text=f"🪪{account['service']}", font=("Segoe UI", 10, "bold"), bg=COLOR_BG_MEDIUM, fg=COLOR_ACCENT, anchor="w")
     service_label.pack(fill="x", padx=10, pady=(8, 2))
     
-    username_label = tk.Label(
-        content_frame,
-        text=f"👤 {account['username']}",
-        font=("Segoe UI", 9),
-        bg=COLOR_BG_MEDIUM,
-        fg="#ffffff",
-        anchor="w"
-    )
+    username_label = tk.Label(content_frame, text=f"👤 {account['username']}", font=("Segoe UI", 9), bg=COLOR_BG_MEDIUM, fg="#ffffff", anchor="w")
     username_label.pack(fill="x", padx=10, pady=(0, 8))
     
     if on_click_callback:
@@ -62,44 +47,20 @@ def create_account_frame(parent, account, idx, on_click_callback=None, popup_ins
         service_label.bind("<Button-1>", lambda e, i=idx: on_click_callback(i))
         username_label.bind("<Button-1>", lambda e, i=idx: on_click_callback(i))
     
-    # Buttons frame (right side)
     buttons_frame = tk.Frame(frame, bg=COLOR_BG_MEDIUM)
     buttons_frame.pack(side="right", padx=10, pady=8)
     
-    from classes import TooltipButton
-    
-    # Button 1
-    btn1 = TooltipButton(
-        buttons_frame,
-        text="Button 1",
-        emoji="📋",
-        tooltip_text="Copy Password",
-        command=lambda: on_account_button_click(1, account, popup_instance)
-    )
+    btn1 = TooltipButton(buttons_frame, text="Button 1", emoji="📋", tooltip_text="Copy Creds", command=lambda: button_click(1, account, popup_instance))
     btn1.pack(side="left", padx=2)
     
-    # Button 2
-    btn2 = TooltipButton(
-        buttons_frame,
-        text="Button 2",
-        emoji="🔑",
-        tooltip_text="Copy Username",
-        command=lambda: on_account_button_click(2, account, popup_instance)
-    )
+    btn2 = TooltipButton(buttons_frame, text="Button 2", emoji="🔑", tooltip_text="Fill Creds", command=lambda: button_click(2, account, popup_instance))
     btn2.pack(side="left", padx=2)
     
-    # Button 3
-    btn3 = TooltipButton(
-        buttons_frame,
-        text="Button 3",
-        emoji="🔐",
-        tooltip_text="Copy MFA",
-        command=lambda: on_account_button_click(3, account, popup_instance)
-    )
+    has_mfa = account.get("mfa") and account.get("mfa").strip()
+    btn3 = TooltipButton(buttons_frame, text="Button 3", emoji="🔐", tooltip_text="2FA not configured" if not has_mfa else "Fill 2FA", command=lambda: button_click(3, account, popup_instance) if has_mfa else None, state="disabled" if not has_mfa else "normal")
     btn3.pack(side="left", padx=2)
     
     return frame
-
 
 def highlight_items(account_frames, index):
     for i, frame in enumerate(account_frames):
@@ -112,31 +73,34 @@ def highlight_items(account_frames, index):
             for child in frame.winfo_children():
                 child.configure(bg=COLOR_BG_MEDIUM)
 
-
 def show_toast(message):
     print(f"[Password Manager] {message}")
-
 
 def verify_and_cache_master_key(key, cached_master_key_ref):
     if not key:
         return {"success": False, "error": "Please enter a master key"}
-    
     if not master_key_exists():
         if len(key) < 4:
             return {"success": False, "error": "Key must be at least 4 characters"}
         save_master_key(key)
         return {"success": True, "is_setup": True, "key": key}
-    
     if verify_master_key(key):
         return {"success": True, "is_setup": False, "key": key}
     else:
         return {"success": False, "error": "Invalid master key"}
 
-
-def on_account_button_click(button_number, account, popup_instance):
-    """Handle account button clicks, close popup, and restore focus"""
+def button_click(button_number, account, popup_instance):
     try:
-        # Close popup and restore focus
+        if button_number == 1:
+            print(f"[Password Manager] Username: {account['username']}")
+            print(f"[Password Manager] Password: {account['password']}")
+        elif button_number == 2:
+            print(f"[Password Manager] Username: {account['username']}")
+            print(f"[Password Manager] Password: {account['password']}")
+        elif button_number == 3:
+            if account.get("mfa"):
+                print(f"[Password Manager] 2FA Code: {account['mfa']}")
+                
         if popup_instance and popup_instance.root:
             if popup_instance.previous_focus_hwnd:
                 try:
@@ -145,7 +109,6 @@ def on_account_button_click(button_number, account, popup_instance):
                     pass
             popup_instance._close()
         
-        # Print which button was pressed
         print(f"[Password Manager] Button {button_number} pressed for account: {account['service']} ({account['username']})")
     except Exception as e:
         print(f"[Password Manager] Error handling button click: {e}")
