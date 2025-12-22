@@ -41,6 +41,7 @@ class PasswordPopup:
         self.master_entry = None
         self.error_label = None
         self.account_frames = []
+        self.check_outside_id = None
         
     def show(self):
         self.root = tk.Tk()
@@ -67,8 +68,7 @@ class PasswordPopup:
         self._show_master_key_input()
         
         self.root.bind("<Escape>", self._close)
-        # self.root.bind("<FocusOut>", lambda e: self._close())
-                
+        
         self.root.update_idletasks()
         width = max(300, self.root.winfo_reqwidth())
         height = min(400, self.root.winfo_reqheight())
@@ -86,7 +86,8 @@ class PasswordPopup:
         self.root.attributes("-topmost", True)
         
         self.root.focus_force()
-        self.root.grab_set()
+        
+        self._check_click_outside()
         
         self.root.after(10, self._focus_entry)
         self.root.after(50, self._focus_entry)
@@ -359,11 +360,39 @@ class PasswordPopup:
     def _show_toast(self, message):
         print(f"[Password Manager] {message}")
     
+    def _check_click_outside(self):
+        """Check if mouse is outside and close if it is"""
+        if not self.root or not self.root.winfo_exists():
+            return
+        
+        try:
+            x = self.root.winfo_x()
+            y = self.root.winfo_y()
+            width = self.root.winfo_width()
+            height = self.root.winfo_height()
+            
+            mouse_x = self.root.winfo_pointerx()
+            mouse_y = self.root.winfo_pointery()
+            
+            # Check if mouse is outside the window
+            if mouse_x < x or mouse_x > x + width or mouse_y < y or mouse_y > y + height:
+                self._close()
+                return
+        except:
+            pass
+        
+        # Schedule next check
+        self.check_outside_id = self.root.after(100, self._check_click_outside)
+    
     def _close(self, event=None):
         if self.root:
+            if self.check_outside_id:
+                self.root.after_cancel(self.check_outside_id)
+                self.check_outside_id = None
             self.root.grab_release()
             self.root.destroy()
             self.root = None
+            print("[Password Manager] Popup disappeared")
         if self.on_close:
             self.on_close()
 
