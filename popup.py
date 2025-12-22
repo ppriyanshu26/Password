@@ -88,13 +88,7 @@ class PasswordPopup:
         is_setup = not master_key_exists()
         
         prompt_text = "Create Master Key:" if is_setup else "Enter Master Key:"
-        label = tk.Label(
-            self.auth_frame,
-            text=prompt_text,
-            font=FONT_LABEL,
-            bg=COLOR_BG_DARK,
-            fg=COLOR_TEXT_PRIMARY
-        )
+        label = tk.Label(self.auth_frame, text=prompt_text, font=FONT_LABEL, bg=COLOR_BG_DARK, fg=COLOR_TEXT_PRIMARY)
         label.pack(anchor="w", pady=(0, 5))
         
         self.master_entry = tk.Entry(self.auth_frame, font=FONT_INPUT, show="•", bg=COLOR_BG_MEDIUM, fg=COLOR_TEXT_PRIMARY, insertbackground=COLOR_TEXT_PRIMARY, relief="flat", width=25)
@@ -147,39 +141,16 @@ class PasswordPopup:
             all_vault_accounts = []
         
         if not self.accounts and not all_vault_accounts:
-            no_acc_label = tk.Label(
-                content_frame,
-                text="No accounts found",
-                font=FONT_LABEL,
-                bg=COLOR_BG_DARK,
-                fg=COLOR_TEXT_SECONDARY,
-                pady=20,
-                padx=40
-            )
+            no_acc_label = tk.Label(content_frame, text="No accounts found", font=FONT_LABEL, bg=COLOR_BG_DARK, fg=COLOR_TEXT_SECONDARY, pady=20, padx=40)
             no_acc_label.pack()
         elif not self.accounts:
-            no_acc_label = tk.Label(
-                content_frame,
-                text="No accounts found",
-                font=FONT_LABEL,
-                bg=COLOR_BG_DARK,
-                fg=COLOR_TEXT_SECONDARY,
-                pady=10,
-                padx=40
-            )
+            no_acc_label = tk.Label(content_frame, text="No accounts found", font=FONT_LABEL, bg=COLOR_BG_DARK, fg=COLOR_TEXT_SECONDARY, pady=10, padx=40)
             no_acc_label.pack()
             
             divider = tk.Frame(content_frame, bg=COLOR_BG_HIGHLIGHT, height=2)
             divider.pack(fill="x", padx=5, pady=5)
             
-            all_label = tk.Label(
-                content_frame,
-                text="All Accounts:",
-                font=FONT_LABEL,
-                bg=COLOR_BG_DARK,
-                fg=COLOR_TEXT_PRIMARY,
-                pady=5
-            )
+            all_label = tk.Label(content_frame, text="All Accounts:", font=FONT_LABEL, bg=COLOR_BG_DARK, fg=COLOR_TEXT_PRIMARY, pady=5)
             all_label.pack(anchor="w", padx=10)
             
             canvas = tk.Canvas(content_frame, bg=COLOR_BG_DARK, highlightthickness=0)
