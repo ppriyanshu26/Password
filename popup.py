@@ -70,8 +70,9 @@ class PasswordPopup:
         self.root.bind("<Escape>", self._close)
         
         self.root.update_idletasks()
-        width = max(300, self.root.winfo_reqwidth())
-        height = min(400, self.root.winfo_reqheight())
+        # Fixed size
+        width = 400
+        height = 500
         
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
@@ -223,17 +224,57 @@ class PasswordPopup:
             
             self.account_frames = []
             
-            for idx, account in enumerate(self.accounts):
+            # Separate matched accounts from others
+            matched_accounts = self.accounts[:]  # All matched accounts from matcher
+            other_accounts = []
+            
+            # Load all accounts from vault to find non-matched ones
+            from credentials import load_vault
+            all_vault_accounts = []
+            try:
+                vault = load_vault()
+                for service, accounts in vault.items():
+                    for account in accounts:
+                        all_vault_accounts.append({
+                            "service": service,
+                            "username": account.get("username", ""),
+                            "password": account.get("password", ""),
+                            "mfa": account.get("mfa", "")
+                        })
+            except:
+                all_vault_accounts = []
+            
+            # Find accounts not in matched list
+            matched_set = {(a["service"], a["username"]) for a in matched_accounts}
+            for acc in all_vault_accounts:
+                if (acc["service"], acc["username"]) not in matched_set:
+                    other_accounts.append(acc)
+            
+            # Sort other accounts alphabetically
+            other_accounts.sort(key=lambda x: (x["service"].lower(), x["username"].lower()))
+            
+            # Display matched accounts
+            for idx, account in enumerate(matched_accounts):
                 frame = self._create_account_frame(scrollable_frame, account, idx)
                 frame.pack(fill="x", padx=5, pady=2)
                 self.account_frames.append(frame)
+            
+            # Add divider if there are other accounts
+            if other_accounts:
+                divider = tk.Frame(scrollable_frame, bg="#4a4a6a", height=2)
+                divider.pack(fill="x", padx=5, pady=8)
+                
+                # Display other accounts alphabetically
+                for idx, account in enumerate(other_accounts, start=len(matched_accounts)):
+                    frame = self._create_account_frame(scrollable_frame, account, idx)
+                    frame.pack(fill="x", padx=5, pady=2)
+                    self.account_frames.append(frame)
             
             if self.account_frames:
                 self._highlight_item(0)
             
             canvas.pack(side="left", fill="both", expand=True, padx=5, pady=5)
-            if len(self.accounts) > 5:
-                scrollbar.pack(side="right", fill="y")
+            scrollbar.pack(side="right", fill="y")
         
         footer = tk.Label(
             self.main_frame,
@@ -253,14 +294,12 @@ class PasswordPopup:
         self.root.bind("<Down>", self._navigate_down)
         
         self.root.update_idletasks()
-        width = max(350, self.root.winfo_reqwidth())
-        height = min(400, self.root.winfo_reqheight())
         
         current_geom = self.root.geometry()
         pos = current_geom.split('+')[1:]
         x, y = int(pos[0]), int(pos[1])
         
-        self.root.geometry(f"{width}x{height}+{x}+{y}")
+        self.root.geometry(f"400x500+{x}+{y}")
     
     def _create_account_frame(self, parent, account, idx):
         frame = tk.Frame(parent, bg="#3b3b3b", cursor="hand2")

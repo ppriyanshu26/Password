@@ -16,9 +16,6 @@ TRIGGER_KEYWORDS = {
     "phone", "mobile", "number"
 }
 
-popup_active = False
-popup_lock = threading.Lock()
-
 
 def check_focused_element():
     try:
@@ -36,13 +33,6 @@ def check_focused_element():
 
 
 def show_menu():
-    global popup_active
-    
-    with popup_lock:
-        if popup_active:
-            return
-        popup_active = True
-    
     try:
         if not check_focused_element():
             element = auto.GetFocusedControl()
@@ -50,27 +40,15 @@ def show_menu():
                 print(f"[Password Manager] Not a login field: '{element.Name}', skipping...")
             else:
                 print("[Password Manager] No focused element found, skipping...")
-            with popup_lock:
-                popup_active = False
             return
         
         accounts = get_matching_accounts()
         
-        def run_popup():
-            global popup_active
-            try:
-                show_popup(accounts)
-            finally:
-                with popup_lock:
-                    popup_active = False
-        
-        popup_thread = threading.Thread(target=run_popup, daemon=True)
+        popup_thread = threading.Thread(target=lambda: show_popup(accounts), daemon=True)
         popup_thread.start()
         
     except Exception as e:
         print(f"Error showing menu: {e}")
-        with popup_lock:
-            popup_active = False
 
 
 def on_hotkey():
