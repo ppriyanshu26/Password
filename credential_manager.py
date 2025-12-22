@@ -1,7 +1,9 @@
 import json
 import os
 from classes import Crypto
-from config import VAULT_FILE
+from pathlib import Path
+
+CREDENTIALS_FILE = "credentials.json"
 
 class CredentialManager:
     def __init__(self):
@@ -18,9 +20,9 @@ class CredentialManager:
         return True
     
     def _load_credentials(self):
-        if os.path.exists(VAULT_FILE):
+        if os.path.exists(CREDENTIALS_FILE):
             try:
-                with open(VAULT_FILE, 'r') as f:
+                with open(CREDENTIALS_FILE, 'r') as f:
                     return json.load(f)
             except Exception as e:
                 print(f"Error loading credentials: {e}")
@@ -29,14 +31,13 @@ class CredentialManager:
     
     def _save_credentials(self):
         try:
-            with open(VAULT_FILE, 'w') as f:
+            with open(CREDENTIALS_FILE, 'w') as f:
                 json.dump(self.credentials, f, indent=4)
             print("Credentials saved successfully")
         except Exception as e:
             print(f"Error saving credentials: {e}")
     
-    def add_credential(self, platform, username, password, secret_code=None):
-        """Add a new credential"""
+    def add_credential(self, platform, username, password, mfa=None):
         if not self.crypto:
             print("Error: Master password not set up")
             return False
@@ -46,17 +47,21 @@ class CredentialManager:
                 print(f"Error: Username '{username}' already exists for {platform}")
                 return False
         
-        encrypted_password = self.crypto.encrypt(password)
-        encrypted_secret = self.crypto.encrypt(secret_code) if secret_code else None
+        encrypted_password = self.crypto.encrypt_aes(password)
+        encrypted_secret = self.crypto.encrypt_aes(mfa) if mfa else None
         
         if platform not in self.credentials:
             self.credentials[platform] = []
         
-        self.credentials[platform].append({
+        credential = {
             'username': username,
-            'password': encrypted_password,
-            'secret_code': encrypted_secret
-        })
+            'password': encrypted_password
+        }
+        
+        if encrypted_secret:
+            credential['mfa'] = encrypted_secret
+        
+        self.credentials[platform].append(credential)
         
         self._save_credentials()
         print(f"Credential added for {platform} - {username}")
@@ -73,8 +78,8 @@ class CredentialManager:
                 return
             
             for cred in self.credentials[platform]:
-                decrypted_password = self.crypto.decrypt(cred['password'])
-                decrypted_secret = self.crypto.decrypt(cred['secret_code']) if cred['secret_code'] else None
+                decrypted_password = self.crypto.decrypt_aes(cred['password'])
+                decrypted_secret = self.crypto.decrypt_aes(cred.get('mfa')) if cred.get('mfa') else None
                 print(f"Platform: {platform}")
                 print(f"  Username: {cred['username']}")
                 print(f"  Password: {decrypted_password}")
@@ -106,13 +111,13 @@ def main():
             platform = input("Enter platform name: ").strip()
             username = input("Enter username: ").strip()
             password = input("Enter password: ").strip()
-            secret_code = input("Enter secret code (optional, press Enter to skip): ").strip()
+            mfa = input("Enter secret code (optional, press Enter to skip): ").strip()
             
             if not platform or not username or not password:
                 print("Error: Platform, username, and password are required")
                 continue
             
-            manager.add_credential(platform, username, password, secret_code or None)
+            manager.add_credential(platform, username, password, mfa or None)
         
         elif choice == "2":
             manager.view_credentials()

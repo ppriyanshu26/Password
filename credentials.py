@@ -1,8 +1,8 @@
 import json
 import os
 import hashlib
+from config import VAULT_FILE
 
-VAULT_PATH = os.path.join(os.path.dirname(__file__), "vault.json")
 MASTER_KEY_PATH = os.path.join(os.path.dirname(__file__), "master_key.hash")
 
 
@@ -31,13 +31,13 @@ def master_key_exists() -> bool:
 
 
 def load_vault():
-    if not os.path.exists(VAULT_PATH):
+    if not os.path.exists(VAULT_FILE):
         return {}
     
-    with open(VAULT_PATH, "r", encoding="utf-8") as f:
+    with open(VAULT_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def save_vault(vault):
-    with open(VAULT_PATH, "w", encoding="utf-8") as f:
+    with open(VAULT_FILE, "w", encoding="utf-8") as f:
         json.dump(vault, f, indent=2, ensure_ascii=False)
