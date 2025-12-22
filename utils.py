@@ -3,7 +3,9 @@ import win32gui
 import win32con
 import win32process
 import ctypes
+import time
 from config import COLOR_BG_MEDIUM, COLOR_ACCENT
+from credentials import verify_master_key, master_key_exists, save_master_key
 
 def force_foreground(root):
     try:
@@ -26,7 +28,7 @@ def force_foreground(root):
     except Exception as e:
         print(f"Focus error: {e}")
 
-def create_account_frame(parent, account, idx, on_click_callback):
+def create_account_frame(parent, account, idx, on_click_callback=None):
     frame = tk.Frame(parent, bg=COLOR_BG_MEDIUM, cursor="hand2")
     frame.account_data = account
     frame.index = idx
@@ -51,9 +53,10 @@ def create_account_frame(parent, account, idx, on_click_callback):
     )
     username_label.pack(fill="x", padx=10, pady=(0, 8))
     
-    frame.bind("<Button-1>", lambda e, i=idx: on_click_callback(i))
-    service_label.bind("<Button-1>", lambda e, i=idx: on_click_callback(i))
-    username_label.bind("<Button-1>", lambda e, i=idx: on_click_callback(i))
+    if on_click_callback:
+        frame.bind("<Button-1>", lambda e, i=idx: on_click_callback(i))
+        service_label.bind("<Button-1>", lambda e, i=idx: on_click_callback(i))
+        username_label.bind("<Button-1>", lambda e, i=idx: on_click_callback(i))
     
     return frame
 
@@ -72,3 +75,19 @@ def highlight_items(account_frames, index):
 
 def show_toast(message):
     print(f"[Password Manager] {message}")
+
+
+def verify_and_cache_master_key(key, cached_master_key_ref):
+    if not key:
+        return {"success": False, "error": "Please enter a master key"}
+    
+    if not master_key_exists():
+        if len(key) < 4:
+            return {"success": False, "error": "Key must be at least 4 characters"}
+        save_master_key(key)
+        return {"success": True, "is_setup": True, "key": key}
+    
+    if verify_master_key(key):
+        return {"success": True, "is_setup": False, "key": key}
+    else:
+        return {"success": False, "error": "Invalid master key"}
