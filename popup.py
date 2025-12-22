@@ -262,6 +262,11 @@ class PasswordPopup:
             self.root.destroy()
             self.root = None
             print("[Password Manager] Popup disappeared")
+        if self.previous_focus_hwnd:
+            try:
+                win32gui.SetForegroundWindow(self.previous_focus_hwnd)
+            except:
+                pass
         
         if self.on_close:
             self.on_close()
