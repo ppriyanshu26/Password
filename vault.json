@@ -1,0 +1,25 @@
+{
+  "Instagram": [
+    {
+      "username": "myemail@example.com",
+      "password": "supersecret",
+      "mfa": "ABCDEF"
+    },
+    {
+      "username": "myemail2@example.com",
+      "password": "supersecret"
+    }
+  ],
+  "Discord": [
+    {
+      "username": "insta_user",
+      "password": "anothersecret"
+    }
+  ],
+  "GitHub": [
+    {
+      "username": "dev123",
+      "password": "ghp_xxxxxxxxx"
+    }
+  ]
+}
