@@ -5,7 +5,8 @@ import win32gui
 import time
 from credentials import verify_master_key, master_key_exists, save_master_key
 from config import *
-from utils import force_foreground, create_account_frame, highlight_items, show_toast, verify_and_cache_master_key
+from utils import force_foreground, create_account_frame, highlight_items, show_toast, verify_and_cache_master_key, on_account_button_click
+from classes import TooltipButton
 
 class PasswordPopup:
     cached_master_key = None; cached_master_key_time = None
@@ -167,7 +168,7 @@ class PasswordPopup:
             
             self.account_frames = []
             for idx, account in enumerate(all_vault_accounts):
-                frame = create_account_frame(scrollable_frame, account, idx, self._on_account_click)
+                frame = create_account_frame(scrollable_frame, account, idx, self._on_account_click, self)
                 frame.pack(fill="x", padx=5, pady=2)
                 self.account_frames.append(frame)
             
@@ -201,7 +202,7 @@ class PasswordPopup:
             other_accounts.sort(key=lambda x: (x["service"].lower(), x["username"].lower()))
             
             for idx, account in enumerate(matched_accounts):
-                frame = create_account_frame(scrollable_frame, account, idx, self._on_account_click)
+                frame = create_account_frame(scrollable_frame, account, idx, self._on_account_click, self)
                 frame.pack(fill="x", padx=5, pady=2)
                 self.account_frames.append(frame)
             
@@ -210,7 +211,7 @@ class PasswordPopup:
                 divider.pack(fill="x", padx=5, pady=8)
                 
                 for idx, account in enumerate(other_accounts, start=len(matched_accounts)):
-                    frame = create_account_frame(scrollable_frame, account, idx, self._on_account_click)
+                    frame = create_account_frame(scrollable_frame, account, idx, self._on_account_click, self)
                     frame.pack(fill="x", padx=5, pady=2)
                     self.account_frames.append(frame)
             
@@ -270,7 +271,6 @@ class PasswordPopup:
         
         if self.on_close:
             self.on_close()
-
 
 def show_popup(accounts):
     popup = PasswordPopup(accounts)

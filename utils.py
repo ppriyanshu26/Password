@@ -28,13 +28,17 @@ def force_foreground(root):
     except Exception as e:
         print(f"Focus error: {e}")
 
-def create_account_frame(parent, account, idx, on_click_callback=None):
+def create_account_frame(parent, account, idx, on_click_callback=None, popup_instance=None):
     frame = tk.Frame(parent, bg=COLOR_BG_MEDIUM, cursor="hand2")
     frame.account_data = account
     frame.index = idx
     
+    # Main content frame (left side with service and username)
+    content_frame = tk.Frame(frame, bg=COLOR_BG_MEDIUM)
+    content_frame.pack(side="left", fill="both", expand=True)
+    
     service_label = tk.Label(
-        frame,
+        content_frame,
         text=f"🪪{account['service']}",
         font=("Segoe UI", 10, "bold"),
         bg=COLOR_BG_MEDIUM,
@@ -44,7 +48,7 @@ def create_account_frame(parent, account, idx, on_click_callback=None):
     service_label.pack(fill="x", padx=10, pady=(8, 2))
     
     username_label = tk.Label(
-        frame,
+        content_frame,
         text=f"👤 {account['username']}",
         font=("Segoe UI", 9),
         bg=COLOR_BG_MEDIUM,
@@ -57,6 +61,42 @@ def create_account_frame(parent, account, idx, on_click_callback=None):
         frame.bind("<Button-1>", lambda e, i=idx: on_click_callback(i))
         service_label.bind("<Button-1>", lambda e, i=idx: on_click_callback(i))
         username_label.bind("<Button-1>", lambda e, i=idx: on_click_callback(i))
+    
+    # Buttons frame (right side)
+    buttons_frame = tk.Frame(frame, bg=COLOR_BG_MEDIUM)
+    buttons_frame.pack(side="right", padx=10, pady=8)
+    
+    from classes import TooltipButton
+    
+    # Button 1
+    btn1 = TooltipButton(
+        buttons_frame,
+        text="Button 1",
+        emoji="📋",
+        tooltip_text="Copy Password",
+        command=lambda: on_account_button_click(1, account, popup_instance)
+    )
+    btn1.pack(side="left", padx=2)
+    
+    # Button 2
+    btn2 = TooltipButton(
+        buttons_frame,
+        text="Button 2",
+        emoji="🔑",
+        tooltip_text="Copy Username",
+        command=lambda: on_account_button_click(2, account, popup_instance)
+    )
+    btn2.pack(side="left", padx=2)
+    
+    # Button 3
+    btn3 = TooltipButton(
+        buttons_frame,
+        text="Button 3",
+        emoji="🔐",
+        tooltip_text="Copy MFA",
+        command=lambda: on_account_button_click(3, account, popup_instance)
+    )
+    btn3.pack(side="left", padx=2)
     
     return frame
 
@@ -91,3 +131,21 @@ def verify_and_cache_master_key(key, cached_master_key_ref):
         return {"success": True, "is_setup": False, "key": key}
     else:
         return {"success": False, "error": "Invalid master key"}
+
+
+def on_account_button_click(button_number, account, popup_instance):
+    """Handle account button clicks, close popup, and restore focus"""
+    try:
+        # Close popup and restore focus
+        if popup_instance and popup_instance.root:
+            if popup_instance.previous_focus_hwnd:
+                try:
+                    win32gui.SetForegroundWindow(popup_instance.previous_focus_hwnd)
+                except:
+                    pass
+            popup_instance._close()
+        
+        # Print which button was pressed
+        print(f"[Password Manager] Button {button_number} pressed for account: {account['service']} ({account['username']})")
+    except Exception as e:
+        print(f"[Password Manager] Error handling button click: {e}")
