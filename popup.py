@@ -1,11 +1,11 @@
 import tkinter as tk
 from tkinter import ttk
-import pyperclip
 import pyotp
 import win32gui
 import win32con
 import win32process
 import ctypes
+import time
 from credentials import verify_master_key, master_key_exists, save_master_key
 
 
@@ -32,6 +32,8 @@ def force_foreground(root):
 
 
 class PasswordPopup:
+    MASTER_KEY_CACHE_TIMEOUT = 300  # 5 minutes in seconds
+    
     def __init__(self, accounts, on_close=None):
         self.accounts = accounts
         self.on_close = on_close
@@ -42,6 +44,8 @@ class PasswordPopup:
         self.error_label = None
         self.account_frames = []
         self.check_outside_id = None
+        self.cached_master_key = None
+        self.cached_master_key_time = None
         
     def show(self):
         self.root = tk.Tk()
@@ -107,7 +111,20 @@ class PasswordPopup:
             self.master_entry.focus_set()
             self.master_entry.icursor(tk.END)
     
+    def _is_master_key_cached_and_valid(self):
+        """Check if master key is cached and still within 5-minute window"""
+        if self.cached_master_key is None or self.cached_master_key_time is None:
+            return False
+        elapsed = time.time() - self.cached_master_key_time
+        return elapsed < self.MASTER_KEY_CACHE_TIMEOUT
+    
     def _show_master_key_input(self):
+        # Check if we have a valid cached master key
+        if self._is_master_key_cached_and_valid():
+            self.authenticated = True
+            self._show_accounts()
+            return
+        
         self.auth_frame = tk.Frame(self.main_frame, bg="#2b2b2b")
         self.auth_frame.pack(fill="both", expand=True, padx=15, pady=15)
         
@@ -180,11 +197,15 @@ class PasswordPopup:
                 self.error_label.config(text="Key must be at least 4 characters")
                 return
             save_master_key(key)
+            self.cached_master_key = key
+            self.cached_master_key_time = time.time()
             self.authenticated = True
             self._show_accounts()
             return
         
         if verify_master_key(key):
+            self.cached_master_key = key
+            self.cached_master_key_time = time.time()
             self.authenticated = True
             self._show_accounts()
         else:
@@ -363,8 +384,8 @@ class PasswordPopup:
             return
         if self.accounts:
             password = self.accounts[self.selected_index]["password"]
-            pyperclip.copy(password)
-            self._show_toast("Password copied!")
+            print(f"Password: {password}")
+            self._show_toast("Password printed to console!")
             self._close()
     
     def _copy_username(self, event=None):
@@ -372,8 +393,8 @@ class PasswordPopup:
             return "break"
         if self.accounts:
             username = self.accounts[self.selected_index]["username"]
-            pyperclip.copy(username)
-            self._show_toast("Username copied!")
+            print(f"Username: {username}")
+            self._show_toast("Username printed to console!")
             self._close()
         return "break"
     
@@ -386,8 +407,8 @@ class PasswordPopup:
                 try:
                     totp = pyotp.TOTP(mfa_secret)
                     code = totp.now()
-                    pyperclip.copy(code)
-                    self._show_toast(f"MFA code copied: {code}")
+                    print(f"MFA Code: {code}")
+                    self._show_toast(f"MFA code printed to console: {code}")
                 except Exception as e:
                     self._show_toast("Invalid MFA secret")
                     return
