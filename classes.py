@@ -11,7 +11,6 @@ class TooltipButton(tk.Button):
         
         self.tooltip_text = tooltip_text
         self.tooltip = None
-        
         self.bind("<Enter>", self._show_tooltip)
         self.bind("<Leave>", self._hide_tooltip)
     

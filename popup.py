@@ -3,6 +3,8 @@ from tkinter import ttk
 import win32gui
 import time
 import threading
+import subprocess
+import sys
 from credentials import master_key_exists
 from config import *
 from utils import force_foreground, create_account_frame, verify_and_cache_master_key
@@ -28,6 +30,15 @@ class PasswordPopup:
         
         header = tk.Label(self.main_frame, text="🔐 Password Manager", font=FONT_HEADER,bg=COLOR_BG_DARKER, fg=COLOR_TEXT_PRIMARY, pady=8)
         header.pack(fill="x")
+        header_button_frame = tk.Frame(self.main_frame, bg=COLOR_BG_DARKER, height=36)
+        header_button_frame.pack(fill="x", side="top")
+        header_button_frame.pack_forget()
+        header_container = tk.Frame(self.main_frame, bg=COLOR_BG_DARKER)
+        header_container.pack(fill="x")
+        title_label = tk.Label(header_container, text="🔐 Password Manager", font=FONT_HEADER, bg=COLOR_BG_DARKER, fg=COLOR_TEXT_PRIMARY, pady=8)
+        title_label.pack(side="left", fill="both", expand=True, padx=10)
+        manager_btn = tk.Button(header_container, text="📋 Manager", font=("Segoe UI", 9), bg=COLOR_ACCENT, fg=COLOR_BG_DARKER, relief="flat", cursor="hand2", padx=10, pady=5, command=self._open_manager)
+        manager_btn.pack(side="right", padx=10, pady=5)
         
         self._show_master_key_input()
         self.root.bind("<Escape>", self._close)
@@ -221,8 +232,8 @@ class PasswordPopup:
                 return
         except tk.TclError:
             return
-        except Exception as e:
-            print(f"Error checking click outside: {e}")
+        except Exception:
+            return
         
         try:
             callback_id = self.root.after(CLICK_OUTSIDE_CHECK_INTERVAL, self._check_click_outside)
@@ -256,11 +267,10 @@ class PasswordPopup:
                 self.root.destroy()
             
             self.root = None
-            print("[Password Manager] Popup disappeared")
         except tk.TclError:
             pass
-        except Exception as e:
-            print(f"Error closing popup: {e}")
+        except Exception:
+            pass
         
         if self.previous_focus_hwnd:
             try:
@@ -270,6 +280,16 @@ class PasswordPopup:
         
         if self.on_close:
             self.on_close()
+    
+    def _open_manager(self):
+        self._close()
+        time.sleep(0.5)
+        
+        try:
+            script_path = __file__.replace('popup.py', 'credential_manager_gui.py')
+            subprocess.Popen([sys.executable, script_path])
+        except Exception:
+            pass
 
 def show_popup(accounts):
     popup = PasswordPopup(accounts)

@@ -24,8 +24,8 @@ def force_foreground(root):
         win32gui.SetForegroundWindow(hwnd)
         win32gui.BringWindowToTop(hwnd)
         ctypes.windll.user32.AttachThreadInput(foreground_thread, current_thread, False)
-    except Exception as e:
-        print(f"Focus error: {e}")
+    except Exception:
+        pass
 
 def create_account_frame(parent, account, idx, on_click_callback=None, popup_instance=None):
     frame = tk.Frame(parent, bg=COLOR_BG_MEDIUM, cursor="hand2")
@@ -54,9 +54,6 @@ def create_account_frame(parent, account, idx, on_click_callback=None, popup_ins
     btn3 = TooltipButton(buttons_frame, text="Button 3", emoji="🔐", tooltip_text="2FA not configured" if not has_mfa else "Fill 2FA code", command=lambda: button_click(3, account, popup_instance) if has_mfa else None, state="disabled" if not has_mfa else "normal")
     btn3.pack(side="left", padx=2)
     return frame
-
-def show_toast(message):
-    print(f"[Password Manager] {message}")
 
 def verify_and_cache_master_key(key, cached_master_key_ref):
     if not key:

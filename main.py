@@ -20,7 +20,6 @@ def check_focused_element():
             name_words = set((element.Name or "").lower().split())
             return bool(name_words & TRIGGER_KEYWORDS)       
     except Exception as e:
-        print(f"Error checking focused element: {e}")
         return True
 
 def show_menu():
@@ -28,17 +27,11 @@ def show_menu():
     
     try:
         if popup_active:
-            print("[Password Manager] Popup already active, skipping...")
             return
         
         popup_active = True
         
         if not check_focused_element():
-            element = auto.GetFocusedControl()
-            if element:
-                print(f"[Password Manager] Not a login field: '{element.Name}', skipping...")
-            else:
-                print("[Password Manager] No focused element found, skipping...")
             popup_active = False
             return
         
@@ -49,27 +42,17 @@ def show_menu():
             else:
                 popup_active = False
         except Exception as e:
-            print(f"Error showing popup: {e}")
             popup_active = False
             
     except Exception as e:
-        print(f"Error showing menu: {e}")
         popup_active = False
 
 def on_hotkey():
-    print("[Password Manager] Hotkey triggered!")
     thread = threading.Thread(target=show_menu, daemon=True)
     thread.start()
 
 def main():
     global root
-    
-    print("=" * 50)
-    print(f"  {APP_NAME} Started")
-    print(f"  Version: {APP_VERSION}")
-    print(f"  Hotkey: {HOTKEY}")
-    print("=" * 50)
-    
     root = tk.Tk()
     root.withdraw()
     root.attributes("-topmost", False)
@@ -78,11 +61,9 @@ def main():
     keyboard.add_hotkey(HOTKEY, on_hotkey, suppress=True)
     keyboard_thread = threading.Thread(target=keyboard.wait, daemon=True)
     keyboard_thread.start()
-    
     try:
         root.mainloop()
     except KeyboardInterrupt:
-        print("\nShutting down...")
         keyboard.unhook_all()
         sys.exit(0)
     finally:
