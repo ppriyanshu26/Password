@@ -2,10 +2,15 @@ import threading
 import keyboard
 import uiautomation as auto
 from matcher import get_matching_accounts
-from popup import show_popup
+from popup import show_popup_from_root
 import sys
 import os
 from config import TRIGGER_KEYWORDS, HOTKEY, APP_NAME, APP_VERSION
+import tkinter as tk
+
+# Global Tkinter root window
+root = None
+popup_active = False
 
 def check_focused_element():
     try:
@@ -21,41 +26,77 @@ def check_focused_element():
         return True
 
 def show_menu():
+    global popup_active, root
+    
     try:
+        if popup_active:
+            print("[Password Manager] Popup already active, skipping...")
+            return
+        
+        popup_active = True
+        
         if not check_focused_element():
             element = auto.GetFocusedControl()
             if element:
                 print(f"[Password Manager] Not a login field: '{element.Name}', skipping...")
             else:
                 print("[Password Manager] No focused element found, skipping...")
+            popup_active = False
             return
         
         accounts = get_matching_accounts()
-        
-        popup_thread = threading.Thread(target=lambda: show_popup(accounts), daemon=True)
-        popup_thread.start()       
+        try:
+            # Schedule popup on the main Tkinter thread
+            if root and root.winfo_exists():
+                root.after(0, lambda: show_popup_from_root(root, accounts, lambda: globals().__setitem__('popup_active', False)))
+            else:
+                popup_active = False
+        except Exception as e:
+            print(f"Error showing popup: {e}")
+            popup_active = False
+            
     except Exception as e:
         print(f"Error showing menu: {e}")
+        popup_active = False
 
 def on_hotkey():
     print("[Password Manager] Hotkey triggered!")
-    show_menu()
+    # Run show_menu in a daemon thread to avoid blocking keyboard listener
+    thread = threading.Thread(target=show_menu, daemon=True)
+    thread.start()
 
 def main():
+    global root
+    
     print("=" * 50)
     print(f"  {APP_NAME} Started")
     print(f"  Version: {APP_VERSION}")
     print(f"  Hotkey: {HOTKEY}")
     print("=" * 50)
     
+    # Create invisible root window for Tkinter event loop
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", False)
+    root.geometry("1x1+0+0")
+    
+    # Run keyboard listener in a daemon thread
     keyboard.add_hotkey(HOTKEY, on_hotkey, suppress=True)
+    keyboard_thread = threading.Thread(target=keyboard.wait, daemon=True)
+    keyboard_thread.start()
     
     try:
-        keyboard.wait()
+        # Run Tkinter mainloop on the main thread
+        root.mainloop()
     except KeyboardInterrupt:
         print("\nShutting down...")
         keyboard.unhook_all()
         sys.exit(0)
+    finally:
+        try:
+            root.destroy()
+        except:
+            pass
 
 if __name__ == "__main__":
     main()

@@ -64,17 +64,6 @@ def create_account_frame(parent, account, idx, on_click_callback=None, popup_ins
     
     return frame
 
-def highlight_items(account_frames, index):
-    for i, frame in enumerate(account_frames):
-        if i == index:
-            frame.configure(bg="#4a4a6a")
-            for child in frame.winfo_children():
-                child.configure(bg="#4a4a6a")
-        else:
-            frame.configure(bg=COLOR_BG_MEDIUM)
-            for child in frame.winfo_children():
-                child.configure(bg=COLOR_BG_MEDIUM)
-
 def show_toast(message):
     print(f"[Password Manager] {message}")
 
@@ -99,7 +88,9 @@ def button_click(button_number, account, popup_instance):
                     win32gui.SetForegroundWindow(popup_instance.previous_focus_hwnd)
                 except:
                     pass
-            popup_instance._close()
+            # Schedule window close on the Tkinter thread
+            if popup_instance.root.winfo_exists():
+                popup_instance.root.after(0, popup_instance._close)
             time.sleep(0.1)
         if button_number == 1:
             keyboard.write(account['username'])

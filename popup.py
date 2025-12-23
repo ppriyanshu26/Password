@@ -1,24 +1,27 @@
 import tkinter as tk
 from tkinter import ttk
-import pyotp
 import win32gui
 import time
+import threading
 from credentials import master_key_exists
 from config import *
-from utils import force_foreground, create_account_frame, highlight_items, verify_and_cache_master_key
+from utils import force_foreground, create_account_frame, verify_and_cache_master_key
 
 class PasswordPopup:
     cached_master_key = None; cached_master_key_time = None
     
     def __init__(self, accounts, on_close=None):
-        self.accounts = accounts; self.on_close = on_close; self.root = None; self.selected_index = 0; self.authenticated = False; self.master_entry = None; self.error_label = None; self.account_frames = []; self.check_outside_id = None; self.previous_focus_hwnd = None
+        self.accounts = accounts; self.on_close = on_close; self.root = None; self.selected_index = 0; self.authenticated = False; self.master_entry = None; self.error_label = None; self.account_frames = []; self.check_outside_id = None; self.previous_focus_hwnd = None; self._closing = False; self.pending_callbacks = []
         
     def show(self):
         self.previous_focus_hwnd = win32gui.GetForegroundWindow()
-        self.root = tk.Tk()
+        self.root = tk.Toplevel()
         self.root.title(APP_NAME)
         self.root.attributes("-topmost", True)
         self.root.overrideredirect(True)
+        
+        # Create a thread-safe close handler
+        self.close_event = threading.Event()
         
         x = self.root.winfo_pointerx()
         y = self.root.winfo_pointery()
@@ -44,11 +47,12 @@ class PasswordPopup:
         self.root.attributes("-topmost", True)
         self.root.focus_force()
         self._check_click_outside()
-        self.root.after(10, self._focus_entry)
-        self.root.after(50, self._focus_entry)
-        self.root.after(100, self._focus_entry)
-        self.root.after(200, self._focus_entry)
-        self.root.mainloop()
+        self.pending_callbacks.append(self.root.after(10, self._focus_entry))
+        self.pending_callbacks.append(self.root.after(50, self._focus_entry))
+        self.pending_callbacks.append(self.root.after(100, self._focus_entry))
+        self.pending_callbacks.append(self.root.after(200, self._focus_entry))
+        
+        # Don't call mainloop() - the parent root's mainloop is already running
     
     def _focus_entry(self):
         if not self.root or not self.root.winfo_exists():
@@ -138,9 +142,6 @@ class PasswordPopup:
             no_acc_label = tk.Label(content_frame, text="No accounts found", font=FONT_LABEL, bg=COLOR_BG_DARK, fg=COLOR_TEXT_SECONDARY, pady=10, padx=40)
             no_acc_label.pack()
             
-            divider = tk.Frame(content_frame, bg=COLOR_BG_HIGHLIGHT, height=2)
-            divider.pack(fill="x", padx=5, pady=5)
-            
             all_label = tk.Label(content_frame, text="All Accounts:", font=FONT_LABEL, bg=COLOR_BG_DARK, fg=COLOR_TEXT_PRIMARY, pady=5)
             all_label.pack(anchor="w", padx=10)
             
@@ -188,16 +189,10 @@ class PasswordPopup:
                 self.account_frames.append(frame)
             
             if other_accounts:
-                divider = tk.Frame(scrollable_frame, bg=COLOR_BG_HIGHLIGHT, height=2)
-                divider.pack(fill="x", padx=5, pady=8)
-                
                 for idx, account in enumerate(other_accounts, start=len(matched_accounts)):
                     frame = create_account_frame(scrollable_frame, account, idx, self._on_account_click, self)
                     frame.pack(fill="x", padx=5, pady=2)
                     self.account_frames.append(frame)
-            
-            if self.account_frames:
-                highlight_items(self.account_frames, 0)
             
             canvas.pack(side="left", fill="both", expand=True, padx=5, pady=5)
             scrollbar.pack(side="right", fill="y")
@@ -212,10 +207,9 @@ class PasswordPopup:
     
     def _on_account_click(self, index):
         self.selected_index = index
-        highlight_items(self.account_frames, index)
     
     def _check_click_outside(self):
-        if not self.root or not self.root.winfo_exists():
+        if not self.root or not self.root.winfo_exists() or self._closing:
             return
         
         try:
@@ -228,22 +222,58 @@ class PasswordPopup:
             mouse_y = self.root.winfo_pointery()
             
             if mouse_x < x or mouse_x > x + width or mouse_y < y or mouse_y > y + height:
-                self._close()
+                self.root.after(0, self._close)
                 return
-        except:
-            pass
+        except tk.TclError:
+            # Window was destroyed, stop checking
+            return
+        except Exception as e:
+            print(f"Error checking click outside: {e}")
         
-        self.check_outside_id = self.root.after(CLICK_OUTSIDE_CHECK_INTERVAL, self._check_click_outside)
+        try:
+            callback_id = self.root.after(CLICK_OUTSIDE_CHECK_INTERVAL, self._check_click_outside)
+            self.check_outside_id = callback_id
+            self.pending_callbacks.append(callback_id)
+        except tk.TclError:
+            # Window was destroyed
+            pass
     
     def _close(self, event=None):
-        if self.root:
-            if self.check_outside_id:
-                self.root.after_cancel(self.check_outside_id)
-                self.check_outside_id = None
-            self.root.grab_release()
-            self.root.destroy()
+        if self._closing or not self.root:
+            return
+        
+        self._closing = True
+        
+        try:
+            # Cancel all pending callbacks before destroying the window
+            if self.root.winfo_exists():
+                try:
+                    if self.check_outside_id:
+                        self.root.after_cancel(self.check_outside_id)
+                        self.check_outside_id = None
+                except tk.TclError:
+                    pass
+                
+                # Cancel all other pending callbacks
+                for callback_id in self.pending_callbacks:
+                    try:
+                        self.root.after_cancel(callback_id)
+                    except tk.TclError:
+                        pass
+                self.pending_callbacks.clear()
+                
+                # Now destroy the window
+                self.root.grab_release()
+                self.root.destroy()
+            
             self.root = None
             print("[Password Manager] Popup disappeared")
+        except tk.TclError:
+            # Window already destroyed, ignore
+            pass
+        except Exception as e:
+            print(f"Error closing popup: {e}")
+        
         if self.previous_focus_hwnd:
             try:
                 win32gui.SetForegroundWindow(self.previous_focus_hwnd)
@@ -255,4 +285,10 @@ class PasswordPopup:
 
 def show_popup(accounts):
     popup = PasswordPopup(accounts)
+    popup.show()
+def show_popup_from_root(root, accounts, on_close=None):
+    """Show popup using an existing Tkinter root window (main thread safe)"""
+    popup = PasswordPopup(accounts, on_close=on_close)
+    # Create the popup as a top-level but use the provided root
+    popup.parent_root = root
     popup.show()

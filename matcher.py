@@ -2,16 +2,13 @@ import re
 import win32gui
 from credentials import load_vault
 
-
 def get_window_title():
     hwnd = win32gui.GetForegroundWindow()
     return win32gui.GetWindowText(hwnd)
 
-
 def get_matching_services():
     title = get_window_title().lower()
     parts = [p.strip() for p in re.split(r" - | \| | • | · ", title)]
-
     vault = load_vault()
     matches = {}
 
@@ -22,9 +19,7 @@ def get_matching_services():
             if service_l in part or part in service_l:
                 matches[service] = accounts
                 break
-
     return matches
-
 
 def get_matching_accounts():
     matches = get_matching_services()
@@ -38,5 +33,4 @@ def get_matching_accounts():
                 "password": account.get("password", ""),
                 "mfa": account.get("mfa", "")
             })
-    
     return accounts
