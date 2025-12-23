@@ -14,19 +14,15 @@ def force_foreground(root):
     try:
         root.update()
         hwnd = win32gui.GetParent(root.winfo_id())
-        
         foreground = win32gui.GetForegroundWindow()
         foreground_thread, _ = win32process.GetWindowThreadProcessId(foreground)
         current_thread = ctypes.windll.kernel32.GetCurrentThreadId()
         
         ctypes.windll.user32.AttachThreadInput(foreground_thread, current_thread, True)
-        
         win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
-        win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0,
-                              win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+        win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0,win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.SetForegroundWindow(hwnd)
         win32gui.BringWindowToTop(hwnd)
-        
         ctypes.windll.user32.AttachThreadInput(foreground_thread, current_thread, False)
     except Exception as e:
         print(f"Focus error: {e}")
@@ -40,7 +36,6 @@ def create_account_frame(parent, account, idx, on_click_callback=None, popup_ins
     
     service_label = tk.Label(content_frame, text=f"🪪{account['service']}", font=("Segoe UI", 10, "bold"), bg=COLOR_BG_MEDIUM, fg=COLOR_ACCENT, anchor="w")
     service_label.pack(fill="x", padx=10, pady=(8, 2))
-    
     username_label = tk.Label(content_frame, text=f"👤 {account['username']}", font=("Segoe UI", 9), bg=COLOR_BG_MEDIUM, fg="#ffffff", anchor="w")
     username_label.pack(fill="x", padx=10, pady=(0, 8))
     
@@ -51,7 +46,6 @@ def create_account_frame(parent, account, idx, on_click_callback=None, popup_ins
     
     buttons_frame = tk.Frame(frame, bg=COLOR_BG_MEDIUM)
     buttons_frame.pack(side="right", padx=10, pady=8)
-    
     btn1 = TooltipButton(buttons_frame, text="Button 1", emoji="📋", tooltip_text="Fill Credentials", command=lambda: button_click(1, account, popup_instance))
     btn1.pack(side="left", padx=2)
     btn2 = TooltipButton(buttons_frame, text="Button 2", emoji="🔑", tooltip_text="Copy Credentials", command=lambda: button_click(2, account, popup_instance))
@@ -59,7 +53,6 @@ def create_account_frame(parent, account, idx, on_click_callback=None, popup_ins
     has_mfa = account.get("mfa") and account.get("mfa").strip()
     btn3 = TooltipButton(buttons_frame, text="Button 3", emoji="🔐", tooltip_text="2FA not configured" if not has_mfa else "Fill 2FA code", command=lambda: button_click(3, account, popup_instance) if has_mfa else None, state="disabled" if not has_mfa else "normal")
     btn3.pack(side="left", padx=2)
-    
     return frame
 
 def show_toast(message):
@@ -92,14 +85,10 @@ def button_click(button_number, account, popup_instance):
     obj = Crypto(PasswordPopup.cached_master_key)
     pw = obj.decrypt_aes(account['password'])
     if button_number == 1:
-        keyboard.write(account['username'])
-        keyboard.press_and_release("tab")
-        keyboard.write(pw)
-        keyboard.press_and_release("enter")
+        keyboard.write(account['username']); keyboard.press_and_release("tab"); keyboard.write(pw); keyboard.press_and_release("enter")
     elif button_number == 2:
         credentials_text = f"{account['username']}\n{pw}"
         pyperclip.copy(credentials_text)
     elif button_number == 3:
         pw = obj.decrypt_aes(account['mfa'])
-        keyboard.write(pw)
-        keyboard.press_and_release("enter")
+        keyboard.write(pw); keyboard.press_and_release("enter")

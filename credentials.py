@@ -5,23 +5,22 @@ from config import VAULT_FILE
 
 MASTER_KEY_PATH = os.path.join(os.path.dirname(__file__), "master_key.hash")
 
-
-def hash_master_key(key: str) -> str:
+def hash_master_key(key):
     return hashlib.sha256(key.encode('utf-8')).hexdigest()
 
-def save_master_key(key: str):
+def save_master_key(key):
     hashed = hash_master_key(key)
     with open(MASTER_KEY_PATH, "w", encoding="utf-8") as f:
         f.write(hashed)
 
-def verify_master_key(key: str) -> bool:
+def verify_master_key(key):
     if not os.path.exists(MASTER_KEY_PATH):
         return False  
     with open(MASTER_KEY_PATH, "r", encoding="utf-8") as f:
         stored_hash = f.read().strip()    
     return hash_master_key(key) == stored_hash
 
-def master_key_exists() -> bool:
+def master_key_exists():
     return os.path.exists(MASTER_KEY_PATH)
 
 def load_vault():
