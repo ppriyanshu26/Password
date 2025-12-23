@@ -4,6 +4,8 @@ APP_VERSION = "1.0.0"
 VAULT_FILE = "credentials.json"
 HOTKEY = "ctrl+shift+l"
 
+MASTER_KEY_PATH = "master_key.hash"
+
 MASTER_KEY_CACHE_TIMEOUT = 300
 
 TRIGGER_KEYWORDS = {
