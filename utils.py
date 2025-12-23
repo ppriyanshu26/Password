@@ -7,7 +7,7 @@ import ctypes
 import time
 import pyperclip
 from config import COLOR_BG_MEDIUM, COLOR_ACCENT
-from classes import TooltipButton
+from classes import TooltipButton, Crypto
 from credentials import verify_master_key, master_key_exists, save_master_key
 
 def force_foreground(root):
@@ -54,10 +54,8 @@ def create_account_frame(parent, account, idx, on_click_callback=None, popup_ins
     
     btn1 = TooltipButton(buttons_frame, text="Button 1", emoji="📋", tooltip_text="Fill Credentials", command=lambda: button_click(1, account, popup_instance))
     btn1.pack(side="left", padx=2)
-    
     btn2 = TooltipButton(buttons_frame, text="Button 2", emoji="🔑", tooltip_text="Copy Credentials", command=lambda: button_click(2, account, popup_instance))
     btn2.pack(side="left", padx=2)
-    
     has_mfa = account.get("mfa") and account.get("mfa").strip()
     btn3 = TooltipButton(buttons_frame, text="Button 3", emoji="🔐", tooltip_text="2FA not configured" if not has_mfa else "Fill 2FA code", command=lambda: button_click(3, account, popup_instance) if has_mfa else None, state="disabled" if not has_mfa else "normal")
     btn3.pack(side="left", padx=2)
@@ -81,32 +79,32 @@ def verify_and_cache_master_key(key, cached_master_key_ref):
         return {"success": False, "error": "Invalid master key"}
 
 def button_click(button_number, account, popup_instance):
-    try:
-        if popup_instance and popup_instance.root:
-            if popup_instance.previous_focus_hwnd:
-                try:
-                    win32gui.SetForegroundWindow(popup_instance.previous_focus_hwnd)
-                except:
-                    pass
-            # Schedule window close on the Tkinter thread
-            if popup_instance.root.winfo_exists():
-                popup_instance.root.after(0, popup_instance._close)
-            time.sleep(0.1)
-        if button_number == 1:
-            keyboard.write(account['username'])
-            keyboard.press_and_release("tab")
-            keyboard.write(account['password'])
+    if popup_instance and popup_instance.root:
+        if popup_instance.previous_focus_hwnd:
+            try:
+                win32gui.SetForegroundWindow(popup_instance.previous_focus_hwnd)
+            except:
+                pass
+        if popup_instance.root.winfo_exists():
+            popup_instance.root.after(0, popup_instance._close)
+    time.sleep(0.2)
+    from popup import PasswordPopup
+    obj = Crypto(PasswordPopup.cached_master_key)
+    pw = obj.decrypt_aes(account['password'])
+    if button_number == 1:
+        keyboard.write(account['username'])
+        keyboard.press_and_release("tab")
+        keyboard.write(pw)
+        keyboard.press_and_release("enter")
+        if has_mfa := account.get('mfa'):
+            time.sleep(0.5)
+            mfa_code = obj.decrypt_aes(has_mfa)
+            keyboard.write(mfa_code)
             keyboard.press_and_release("enter")
-            print(f"[Password Manager] Credentials pasted for account: {account['service']} ({account['username']})")
-        elif button_number == 2:
-            credentials_text = f"{account['username']}\n{account['password']}"
-            pyperclip.copy(credentials_text)
-            print(f"[Password Manager] Credentials copied to clipboard for account: {account['service']}")
-        elif button_number == 3:
-            if account.get("mfa"):
-                keyboard.write(account['mfa'])
-                keyboard.press_and_release("enter")
-                print(f"[Password Manager] 2FA Code: {account['mfa']}")
-        print(f"[Password Manager] Button {button_number} pressed for account: {account['service']} ({account['username']})")
-    except Exception as e:
-        print(f"[Password Manager] Error handling button click: {e}")
+    elif button_number == 2:
+        credentials_text = f"{account['username']}\n{pw}"
+        pyperclip.copy(credentials_text)
+    elif button_number == 3:
+        pw = obj.decrypt_aes(account['mfa'])
+        keyboard.write(pw)
+        keyboard.press_and_release("enter")

@@ -19,13 +19,10 @@ class PasswordPopup:
         self.root.title(APP_NAME)
         self.root.attributes("-topmost", True)
         self.root.overrideredirect(True)
-        
-        # Create a thread-safe close handler
         self.close_event = threading.Event()
         
         x = self.root.winfo_pointerx()
         y = self.root.winfo_pointery()
-        
         self.main_frame = tk.Frame(self.root, bg=COLOR_BG_DARK, bd=2, relief="solid")
         self.main_frame.pack(fill="both", expand=True)
         
@@ -51,8 +48,6 @@ class PasswordPopup:
         self.pending_callbacks.append(self.root.after(50, self._focus_entry))
         self.pending_callbacks.append(self.root.after(100, self._focus_entry))
         self.pending_callbacks.append(self.root.after(200, self._focus_entry))
-        
-        # Don't call mainloop() - the parent root's mainloop is already running
     
     def _focus_entry(self):
         if not self.root or not self.root.winfo_exists():
@@ -225,7 +220,6 @@ class PasswordPopup:
                 self.root.after(0, self._close)
                 return
         except tk.TclError:
-            # Window was destroyed, stop checking
             return
         except Exception as e:
             print(f"Error checking click outside: {e}")
@@ -235,7 +229,6 @@ class PasswordPopup:
             self.check_outside_id = callback_id
             self.pending_callbacks.append(callback_id)
         except tk.TclError:
-            # Window was destroyed
             pass
     
     def _close(self, event=None):
@@ -245,7 +238,6 @@ class PasswordPopup:
         self._closing = True
         
         try:
-            # Cancel all pending callbacks before destroying the window
             if self.root.winfo_exists():
                 try:
                     if self.check_outside_id:
@@ -253,8 +245,6 @@ class PasswordPopup:
                         self.check_outside_id = None
                 except tk.TclError:
                     pass
-                
-                # Cancel all other pending callbacks
                 for callback_id in self.pending_callbacks:
                     try:
                         self.root.after_cancel(callback_id)
@@ -262,14 +252,12 @@ class PasswordPopup:
                         pass
                 self.pending_callbacks.clear()
                 
-                # Now destroy the window
                 self.root.grab_release()
                 self.root.destroy()
             
             self.root = None
             print("[Password Manager] Popup disappeared")
         except tk.TclError:
-            # Window already destroyed, ignore
             pass
         except Exception as e:
             print(f"Error closing popup: {e}")
@@ -287,8 +275,6 @@ def show_popup(accounts):
     popup = PasswordPopup(accounts)
     popup.show()
 def show_popup_from_root(root, accounts, on_close=None):
-    """Show popup using an existing Tkinter root window (main thread safe)"""
     popup = PasswordPopup(accounts, on_close=on_close)
-    # Create the popup as a top-level but use the provided root
     popup.parent_root = root
     popup.show()

@@ -4,11 +4,9 @@ import uiautomation as auto
 from matcher import get_matching_accounts
 from popup import show_popup_from_root
 import sys
-import os
 from config import TRIGGER_KEYWORDS, HOTKEY, APP_NAME, APP_VERSION
 import tkinter as tk
 
-# Global Tkinter root window
 root = None
 popup_active = False
 
@@ -46,7 +44,6 @@ def show_menu():
         
         accounts = get_matching_accounts()
         try:
-            # Schedule popup on the main Tkinter thread
             if root and root.winfo_exists():
                 root.after(0, lambda: show_popup_from_root(root, accounts, lambda: globals().__setitem__('popup_active', False)))
             else:
@@ -61,7 +58,6 @@ def show_menu():
 
 def on_hotkey():
     print("[Password Manager] Hotkey triggered!")
-    # Run show_menu in a daemon thread to avoid blocking keyboard listener
     thread = threading.Thread(target=show_menu, daemon=True)
     thread.start()
 
@@ -74,19 +70,16 @@ def main():
     print(f"  Hotkey: {HOTKEY}")
     print("=" * 50)
     
-    # Create invisible root window for Tkinter event loop
     root = tk.Tk()
     root.withdraw()
     root.attributes("-topmost", False)
     root.geometry("1x1+0+0")
     
-    # Run keyboard listener in a daemon thread
     keyboard.add_hotkey(HOTKEY, on_hotkey, suppress=True)
     keyboard_thread = threading.Thread(target=keyboard.wait, daemon=True)
     keyboard_thread.start()
     
     try:
-        # Run Tkinter mainloop on the main thread
         root.mainloop()
     except KeyboardInterrupt:
         print("\nShutting down...")
