@@ -1,6 +1,6 @@
-keyboard>=0.13.5
-pywin32>=306
-uiautomation>=2.0.18
-pyperclip>=1.8.2
-pyotp>=2.9.0
-Pillow>=10.0.0
+keyboard
+pywin32
+pyperclip
+openpyxl
+cryptography
+uiautomation
