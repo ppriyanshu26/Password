@@ -6,9 +6,11 @@ import win32process
 import ctypes
 import time
 import pyperclip
+from pathlib import Path
+from openpyxl import Workbook
 from config import COLOR_BG_MEDIUM, COLOR_ACCENT
 from classes import TooltipButton, Crypto
-from credentials import verify_master_key, master_key_exists, save_master_key
+from credentials import verify_master_key, master_key_exists, save_master_key, load_vault
 
 def force_foreground(root):
     try:
@@ -89,3 +91,29 @@ def button_click(button_number, account, popup_instance):
     elif button_number == 3:
         pw = obj.decrypt_aes(account['mfa'])
         keyboard.write(pw); keyboard.press_and_release("enter")
+
+def export_credentials_to_excel(master_key):
+    desktop_path = Path.home() / "Desktop"
+    file_path = desktop_path / "credentials.xlsx"
+    
+    wb = Workbook()
+    ws = wb.active
+    ws['A1'], ws['B1'], ws['C1'], ws['D1'] = "Platform", "Username", "Password", "MFA"
+    
+    crypto = Crypto(master_key)
+    vault = load_vault()
+    row = 2
+    
+    for platform, accounts in vault.items():
+        for account in accounts:
+            ws[f'A{row}'] = platform
+            ws[f'B{row}'] = account['username']
+            ws[f'C{row}'] = crypto.decrypt_aes(account['password'])
+            ws[f'D{row}'] = crypto.decrypt_aes(account['mfa']) if account.get('mfa') else ""
+            row += 1
+    
+    for col in ['A', 'B', 'C', 'D']:
+        ws.column_dimensions[col].width = 25
+    
+    wb.save(file_path)
+    return {"success": True, "message": "Exported successfully", "file_path": str(file_path)}

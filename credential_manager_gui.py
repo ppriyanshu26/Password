@@ -3,21 +3,23 @@ from tkinter import ttk
 from classes import Crypto
 from config import COLOR_BG_DARK, COLOR_BG_MEDIUM, COLOR_ACCENT, COLOR_TEXT_PRIMARY, COLOR_ERROR
 import credentials as cred
+from utils import export_credentials_to_excel
 
 class CredentialManager:
     def __init__(self):
-        self.crypto = None
-        self.vault = cred.CredentialVault()
+        self.crypto = None; self.vault = cred.CredentialVault(); self.master_key = None
     
     def setup_master_password(self, password):
         if not password: return False
         if not cred.master_key_exists(): 
             cred.save_master_key(password)
             self.crypto = Crypto(password)
+            self.master_key = password
             self.vault.set_crypto(self.crypto)
             return True
         if cred.verify_master_key(password):
             self.crypto = Crypto(password)
+            self.master_key = password
             self.vault.set_crypto(self.crypto)
             return True
         return False
@@ -102,6 +104,7 @@ class CredentialManagerGUI:
         tk.Button(btn_frame, text="✏️ Edit", command=self.edit_creds, font=("Segoe UI", 10), bg=COLOR_ACCENT, fg=COLOR_BG_DARK, relief="flat", padx=15, pady=8).pack(side="left", padx=5)
         tk.Button(btn_frame, text="🗑️ Delete", command=self.del_creds, font=("Segoe UI", 10), bg=COLOR_ERROR, fg="white", relief="flat", padx=15, pady=8).pack(side="left", padx=5)
         tk.Button(btn_frame, text="🔐 Change Master Key", command=self.update_key, font=("Segoe UI", 10), bg="#FFA500", fg="white", relief="flat", padx=15, pady=8).pack(side="left", padx=5)
+        tk.Button(btn_frame, text="⬇️ Export", command=self.export_credentials, font=("Segoe UI", 10), bg="#4CAF50", fg="white", relief="flat", padx=15, pady=8).pack(side="left", padx=5)
     
     def platform_change(self, event):
         self.current_platform = self.plat_combo.get()
@@ -299,6 +302,19 @@ class CredentialManagerGUI:
             self.clear_details()
         
         self.show_input_dialog("CHANGE MASTER KEY", ["Type Your Current Master Key", "Type Your New Master Key", "Type Your Confirm New Master Key"], on_submit, on_cancel)
+    
+    def export_credentials(self):
+        def on_yes():
+            result = export_credentials_to_excel(self.manager.master_key)
+            if result["success"]:
+                self.show_message("Success ✅", f"Exported to Desktop!\n\nFile: credentials.xlsx", lambda: self.create_main_screen())
+            else:
+                self.show_message("Error", result["message"])
+        
+        def on_no():
+            self.show_message("Cancelled", "Export aborted", lambda: self.clear_details())
+        
+        self.show_confirmation("Export Credentials", "⚠️ This will download DECRYPTED passwords to Excel.\n\nProceed?", on_yes, on_no)
 
 root = tk.Tk()
 style = ttk.Style()
