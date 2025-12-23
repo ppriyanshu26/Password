@@ -96,11 +96,6 @@ def button_click(button_number, account, popup_instance):
         keyboard.press_and_release("tab")
         keyboard.write(pw)
         keyboard.press_and_release("enter")
-        if has_mfa := account.get('mfa'):
-            time.sleep(0.5)
-            mfa_code = obj.decrypt_aes(has_mfa)
-            keyboard.write(mfa_code)
-            keyboard.press_and_release("enter")
     elif button_number == 2:
         credentials_text = f"{account['username']}\n{pw}"
         pyperclip.copy(credentials_text)
