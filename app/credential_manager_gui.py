@@ -340,25 +340,27 @@ class CredentialManagerGUI:
     
     def update_key(self):
         def on_submit(values):
-            current_pwd = values.get("Current Master Key", "").strip()
-            new_pwd = values.get("New Master Key", "").strip()
-            confirm_pwd = values.get("Confirm New Master Key", "").strip()
+            current_pwd = values.get("Type Your Current Master Key", "").strip()
+            new_pwd = values.get("Type Your New Master Key", "").strip()
+            confirm_pwd = values.get("Type Your New Master Key Again", "").strip()
             
             if not current_pwd: self.show_message("Error", "Current master key required"); return
             if not new_pwd: self.show_message("Error", "New master key required"); return
             if new_pwd != confirm_pwd: self.show_message("Error", "Passwords don't match"); return
-            
             if not cred.verify_master_key(current_pwd): self.show_message("Error", "❌ Incorrect current master key"); return
             
-            cred.save_master_key(new_pwd)
-            self.manager.crypto = Crypto(new_pwd)
-            self.manager.vault.set_crypto(self.manager.crypto)
-            self.show_message("Success", "Master key changed successfully", lambda: self.create_main_screen())
-        
+            success, msg = cred.rotate_master_key(current_pwd, new_pwd)
+            if success:
+                self.manager.crypto = Crypto(new_pwd)
+                self.manager.master_key = new_pwd
+                self.manager.vault.set_crypto(self.manager.crypto)
+                self.show_message("Success", msg, lambda: self.create_main_screen())
+            else:
+                self.show_message("Error", msg)
         def on_cancel():
             self.clear_details()
         
-        self.show_input_dialog("CHANGE MASTER KEY", ["Type Your Current Master Key", "Type Your New Master Key", "Type Your Confirm New Master Key"], on_submit, on_cancel)
+        self.show_input_dialog("CHANGE MASTER KEY", ["Type Your Current Master Key", "Type Your New Master Key", "Type Your New Master Key Again"], on_submit, on_cancel)
     
     def export_credentials(self):
         def on_yes():

@@ -1,5 +1,3 @@
-import tkinter as tk
-from config import COLOR_BG_MEDIUM, COLOR_ACCENT, COLOR_TEXT_PRIMARY
 import hashlib
 import base64
 import os

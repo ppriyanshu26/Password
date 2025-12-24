@@ -3,6 +3,7 @@ import os
 import hashlib
 import keyring
 from config import SERVICE_NAME, USERNAME
+from classes import Crypto
 
 BASE_APP_DIR = os.getenv("APPDATA")
 APP_FOLDER = os.path.join(BASE_APP_DIR, "Password Manager")
@@ -34,6 +35,23 @@ def load_vault():
 def save_vault(vault):
     with open(VAULT_FILE, "w", encoding="utf-8") as f:
         json.dump(vault, f, indent=2, ensure_ascii=False)
+
+def rotate_master_key(old_password, new_password):
+    try:
+        if not verify_master_key(old_password):
+            return False, "Current master key is incorrect"
+        vault = CredentialVault()
+        old_crypto = Crypto(old_password)
+        vault.set_crypto(old_crypto)
+        vault.load()
+
+        save_master_key(new_password)
+        new_crypto = Crypto(new_password)
+        vault.set_crypto(new_crypto)
+        vault.save()
+        return True, "Master key rotated successfully and all credentials re-encrypted"
+    except Exception as e:
+        return False, f"Error rotating master key: {str(e)}"
 
 class CredentialVault:
     def __init__(self, crypto=None):
