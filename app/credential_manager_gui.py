@@ -89,7 +89,7 @@ class CredentialManagerGUI:
         
         tk.Label(sel_frame, text="📋 Platform:", font=("Segoe UI", 11, "bold"), bg=COLOR_BG_DARK, fg=COLOR_ACCENT).pack(side="left", padx=(0, 10))
         self.plat_combo = ttk.Combobox(sel_frame, font=("Segoe UI", 10), state="readonly", width=20)
-        self.plat_combo['values'] = self.manager.get_platforms()
+        self.plat_combo['values'] = sorted(self.manager.get_platforms())
         self.plat_combo.pack(side="left", padx=(0, 10))
         self.plat_combo.bind("<<ComboboxSelected>>", self.platform_change)
         tk.Button(sel_frame, text="➕", command=self.add_platform, font=("Segoe UI", 10), bg=COLOR_ACCENT, fg=COLOR_BG_DARK, relief="flat", padx=8, pady=3).pack(side="left", padx=(0, 20))
@@ -127,7 +127,8 @@ class CredentialManagerGUI:
     
     def platform_change(self, event):
         self.current_platform = self.plat_combo.get()
-        self.user_combo['values'] = [c['username'] for c in self.manager.get_credentials_for_platform(self.current_platform)]
+        sorted_users = sorted([c['username'] for c in self.manager.get_credentials_for_platform(self.current_platform)])
+        self.user_combo['values'] = sorted_users
         self.user_combo.set('')
         self.clear_details()
     
@@ -144,11 +145,11 @@ class CredentialManagerGUI:
     def show_details(self):
         if not self.current_credential: return
         c = self.current_credential
-        text = f"Platform: {self.current_platform}\n\nUsername: {c['username']}\n\nPassword: {c['password']}\n"
+        text = f"Username: {c['username']}\n\nPassword: {c['password']}\n"
         if c.get('mfa'):
             totp = pyotp.TOTP(c['mfa'])
             current_code = totp.now()
-            text += f"\nMFA Secret: {c['mfa']}\n\nCurrent TOTP: {current_code}"
+            text += f"\nMFA Secret Key: {c['mfa']}\n\nCurrent TOTP: {current_code}"
         else:
             text += "\nMFA: Not configured"
         self.detail_text.config(state="normal")
@@ -260,6 +261,8 @@ class CredentialManagerGUI:
                 self.current_dialog["fields"][current_field].set(self.current_dialog["fields"][current_field].get() + pasted)
             except:
                 pass
+            title = self.detail_text.get(1.0, "1.end")
+            self.render_input_dialog(title)
             return
         if e.keysym == "BackSpace":
             val = self.current_dialog["fields"][current_field].get()
@@ -379,6 +382,12 @@ class CredentialManagerGUI:
 root = tk.Tk()
 root.resizable(False, False)
 style = ttk.Style()
+style.configure("TCombobox",
+                fieldbackground=COLOR_BG_DARK,
+                background=COLOR_BG_DARK,
+                foreground=COLOR_TEXT_PRIMARY,
+                highlightthickness=0,
+                relief="flat")
 style.theme_use('clam')
 gui = CredentialManagerGUI(root)
 root.mainloop()
