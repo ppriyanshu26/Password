@@ -35,6 +35,7 @@ def load_vault():
 def save_vault(vault):
     with open(VAULT_FILE, "w", encoding="utf-8") as f:
         json.dump(vault, f, indent=2, ensure_ascii=False)
+        f.flush()
 
 def rotate_master_key(old_password, new_password):
     try:
@@ -44,10 +45,21 @@ def rotate_master_key(old_password, new_password):
         old_crypto = Crypto(old_password)
         vault.set_crypto(old_crypto)
         vault.load()
-
+        decrypted_vault = vault.decrypt_creds()
+        
         save_master_key(new_password)
         new_crypto = Crypto(new_password)
         vault.set_crypto(new_crypto)
+        reencrypted_vault = {}
+        for platform, creds in decrypted_vault.items():
+            reencrypted_vault[platform] = []
+            for cred in creds:
+                encrypted_pwd = new_crypto.encrypt_aes(cred['password'])
+                encrypted_cred = {'username': cred['username'], 'password': encrypted_pwd}
+                if cred.get('mfa'):
+                    encrypted_cred['mfa'] = new_crypto.encrypt_aes(cred['mfa'])
+                reencrypted_vault[platform].append(encrypted_cred)
+        vault.vault = reencrypted_vault
         vault.save()
         return True, "Master key rotated successfully and all credentials re-encrypted"
     except Exception as e:
@@ -60,6 +72,27 @@ class CredentialVault:
     
     def set_crypto(self, crypto):
         self.crypto = crypto
+    
+    def load(self):
+        self.vault = load_vault()
+    
+    def decrypt_creds(self):
+        if not self.crypto:
+            return {}
+        decrypted_vault = {}
+        for platform, creds in self.vault.items():
+            decrypted_vault[platform] = []
+            for cred in creds:
+                try:
+                    pwd = self.crypto.decrypt_aes(cred['password'])
+                    mfa = self.crypto.decrypt_aes(cred.get('mfa')) if cred.get('mfa') else None
+                    decrypted_cred = {'username': cred['username'], 'password': pwd}
+                    if mfa:
+                        decrypted_cred['mfa'] = mfa
+                    decrypted_vault[platform].append(decrypted_cred)
+                except:
+                    pass
+        return decrypted_vault
     
     def add_cred(self, platform, username, password, mfa=None):
         if not self.crypto: return False, "No password set"
@@ -101,7 +134,7 @@ class CredentialVault:
     def get_platforms(self):
         return sorted(self.vault.keys())
     
-    def get_credentials_for_platform(self, platform):
+    def get_creds_for_platform(self, platform):
         if platform not in self.vault or not self.crypto: return []
         result = []
         for cred in self.vault[platform]:

@@ -18,11 +18,13 @@ class CredentialManager:
             self.crypto = Crypto(password)
             self.master_key = password
             self.vault.set_crypto(self.crypto)
+            self.vault.load()
             return True
         if cred.verify_master_key(password):
             self.crypto = Crypto(password)
             self.master_key = password
             self.vault.set_crypto(self.crypto)
+            self.vault.load()
             return True
         return False
     
@@ -38,8 +40,8 @@ class CredentialManager:
     def get_platforms(self): 
         return self.vault.get_platforms()
     
-    def get_credentials_for_platform(self, platform):
-        return self.vault.get_credentials_for_platform(platform)
+    def get_creds_for_platform(self, platform):
+        return self.vault.get_creds_for_platform(platform)
 
 class CredentialManagerGUI:
     def __init__(self, root):
@@ -121,7 +123,7 @@ class CredentialManagerGUI:
     
     def platform_change(self, event):
         self.current_platform = self.plat_combo.get()
-        sorted_users = sorted([c['username'] for c in self.manager.get_credentials_for_platform(self.current_platform)])
+        sorted_users = sorted([c['username'] for c in self.manager.get_creds_for_platform(self.current_platform)])
         self.user_combo['values'] = sorted_users
         self.user_combo.set('')
         self.clear_details()
@@ -129,7 +131,7 @@ class CredentialManagerGUI:
     def credential_change(self, event):
         if not self.current_platform: return
         username = self.user_combo.get()
-        creds = self.manager.get_credentials_for_platform(self.current_platform)
+        creds = self.manager.get_creds_for_platform(self.current_platform)
         for c in creds:
             if c['username'] == username:
                 self.current_credential = c
@@ -354,7 +356,9 @@ class CredentialManagerGUI:
                 self.manager.crypto = Crypto(new_pwd)
                 self.manager.master_key = new_pwd
                 self.manager.vault.set_crypto(self.manager.crypto)
-                self.show_message("Success", msg, lambda: self.create_main_screen())
+                self.manager.vault.load()
+                self.create_login_screen()
+                
             else:
                 self.show_message("Error", msg)
         def on_cancel():
@@ -378,12 +382,7 @@ class CredentialManagerGUI:
 root = tk.Tk()
 root.resizable(False, False)
 style = ttk.Style()
-style.configure("TCombobox",
-                fieldbackground=COLOR_BG_DARK,
-                background=COLOR_BG_DARK,
-                foreground=COLOR_TEXT_PRIMARY,
-                highlightthickness=0,
-                relief="flat")
+style.configure("TCombobox", fieldbackground=COLOR_BG_DARK, background=COLOR_BG_DARK, foreground=COLOR_TEXT_PRIMARY, highlightthickness=0, relief="flat")
 style.theme_use('clam')
 gui = CredentialManagerGUI(root)
 root.mainloop()
