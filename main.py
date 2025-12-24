@@ -4,8 +4,14 @@ import uiautomation as auto
 from matcher import get_matching_accounts
 from popup import show_popup_from_root
 import sys
-from config import TRIGGER_KEYWORDS, HOTKEY, APP_NAME, APP_VERSION
+from config import TRIGGER_KEYWORDS, HOTKEY
 import tkinter as tk
+import os
+
+BASE_APP_DIR = os.getenv("APPDATA")
+APP_FOLDER = os.path.join(BASE_APP_DIR, "Password Manager")
+os.makedirs(APP_FOLDER, exist_ok=True)
+VAULT_FILE = os.path.join(APP_FOLDER, "credentials.json")
 
 root = None
 popup_active = False
@@ -58,19 +64,21 @@ def main():
     root.attributes("-topmost", False)
     root.geometry("1x1+0+0")
     
-    keyboard.add_hotkey(HOTKEY, on_hotkey, suppress=True)
-    keyboard_thread = threading.Thread(target=keyboard.wait, daemon=True)
-    keyboard_thread.start()
     try:
+        keyboard.add_hotkey(HOTKEY, on_hotkey, suppress=True)
+        keyboard_thread = threading.Thread(target=keyboard.wait, daemon=True)
+        keyboard_thread.start()
         root.mainloop()
     except KeyboardInterrupt:
         keyboard.unhook_all()
         sys.exit(0)
+    except Exception as e:
+        pass
     finally:
         try:
+            keyboard.unhook_all()
             root.destroy()
         except:
             pass
-
 if __name__ == "__main__":
     main()

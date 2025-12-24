@@ -1,9 +1,17 @@
 import tkinter as tk
 from tkinter import ttk
+import pyperclip
 from classes import Crypto
-from config import COLOR_BG_DARK, COLOR_BG_MEDIUM, COLOR_ACCENT, COLOR_TEXT_PRIMARY, COLOR_ERROR
+from config import COLOR_BG_DARK, COLOR_BG_MEDIUM, COLOR_ACCENT, COLOR_TEXT_PRIMARY, COLOR_ERROR, APP_NAME, APP_VERSION
 import credentials as cred
 from utils import export_credentials_to_excel
+import os
+import pyotp
+
+BASE_APP_DIR = os.getenv("APPDATA")
+APP_FOLDER = os.path.join(BASE_APP_DIR, "Password Manager")
+os.makedirs(APP_FOLDER, exist_ok=True)
+VAULT_FILE = os.path.join(APP_FOLDER, "credentials.json")
 
 class CredentialManager:
     def __init__(self):
@@ -41,7 +49,7 @@ class CredentialManager:
 
 class CredentialManagerGUI:
     def __init__(self, root):
-        self.root = root; self.root.title("Password Manager"); self.root.geometry("650x350"); self.root.configure(bg=COLOR_BG_DARK); self.manager = CredentialManager(); self.current_platform = None; self.current_credential = None; self.detail_text = None; self.current_dialog = None; self.create_login_screen()
+        self.root = root; self.root.title(APP_NAME+" "+APP_VERSION); self.root.geometry("650x350"); self.root.configure(bg=COLOR_BG_DARK); self.manager = CredentialManager(); self.current_platform = None; self.current_credential = None; self.detail_text = None; self.current_dialog = None; self.create_login_screen()
     
     def create_login_screen(self):
         for widget in self.root.winfo_children(): widget.destroy()
@@ -80,23 +88,34 @@ class CredentialManagerGUI:
         sel_frame.pack(fill="x", pady=(0, 15))
         
         tk.Label(sel_frame, text="📋 Platform:", font=("Segoe UI", 11, "bold"), bg=COLOR_BG_DARK, fg=COLOR_ACCENT).pack(side="left", padx=(0, 10))
-        self.plat_combo = ttk.Combobox(sel_frame, font=("Segoe UI", 10), state="readonly", width=25)
+        self.plat_combo = ttk.Combobox(sel_frame, font=("Segoe UI", 10), state="readonly", width=20)
         self.plat_combo['values'] = self.manager.get_platforms()
         self.plat_combo.pack(side="left", padx=(0, 10))
         self.plat_combo.bind("<<ComboboxSelected>>", self.platform_change)
         tk.Button(sel_frame, text="➕", command=self.add_platform, font=("Segoe UI", 10), bg=COLOR_ACCENT, fg=COLOR_BG_DARK, relief="flat", padx=8, pady=3).pack(side="left", padx=(0, 20))
-        
+        tk.Button(sel_frame, text="➖", command=self.del_platform, font=("Segoe UI", 10), bg=COLOR_ERROR, fg="white", relief="flat", padx=8, pady=3).pack(side="left", padx=(0, 20))
         tk.Label(sel_frame, text="🔑 User:", font=("Segoe UI", 11, "bold"), bg=COLOR_BG_DARK, fg=COLOR_ACCENT).pack(side="left", padx=(0, 10))
-        self.user_combo = ttk.Combobox(sel_frame, font=("Segoe UI", 10), state="readonly", width=25)
+        self.user_combo = ttk.Combobox(sel_frame, font=("Segoe UI", 10), state="readonly", width=20)
         self.user_combo.pack(side="left")
         self.user_combo.bind("<<ComboboxSelected>>", self.credential_change)
         
-        detail_frame = tk.Frame(content, bg=COLOR_BG_MEDIUM, relief="flat")
-        detail_frame.pack(fill="both", expand=False, pady=(0, 15))
+        detail_container = tk.Frame(content, bg=COLOR_BG_DARK)
+        detail_container.pack(fill="both", expand=False, pady=(0, 15))
+        detail_frame = tk.Frame(detail_container, bg=COLOR_BG_MEDIUM, relief="flat")
+        detail_frame.pack(fill="both", expand=True, side="left", padx=(0, 10))
         
-        self.detail_text = tk.Text(detail_frame, font=("Segoe UI", 10), bg=COLOR_BG_DARK, fg=COLOR_TEXT_PRIMARY, relief="flat", padx=15, pady=15, wrap="word", height=8, width=70)
-        self.detail_text.pack(fill="both", expand=False, padx=1, pady=1)
+        self.detail_text = tk.Text(detail_frame, font=("Segoe UI", 10), bg=COLOR_BG_DARK, fg=COLOR_TEXT_PRIMARY, relief="flat", padx=15, pady=15, wrap="word", height=8, width=50)
+        self.detail_text.pack(fill="both", expand=True, padx=1, pady=1)
         self.detail_text.config(state="disabled")
+        
+        self.copy_btn_frame = tk.Frame(detail_container, bg=COLOR_BG_DARK)
+        self.copy_btn_frame.pack(side="left", fill="y", padx=10)
+        self.copy_username_btn = tk.Button(self.copy_btn_frame, text="Copy Username", command=lambda: pyperclip.copy(self.current_credential['username']), font=("Segoe UI", 8), bg=COLOR_ACCENT, fg=COLOR_BG_DARK, relief="flat", padx=8, pady=10, state="disabled", width=10)
+        self.copy_username_btn.pack(side="top", pady=5)
+        self.copy_password_btn = tk.Button(self.copy_btn_frame, text="Copy Password", command=lambda: pyperclip.copy(self.current_credential['password']), font=("Segoe UI", 8), bg=COLOR_ACCENT, fg=COLOR_BG_DARK, relief="flat", padx=8, pady=10, state="disabled", width=10)
+        self.copy_password_btn.pack(side="top", pady=5)
+        self.copy_totp_btn = tk.Button(self.copy_btn_frame, text="Copy TOTP", command=self.copy_totp, font=("Segoe UI", 8), bg=COLOR_ACCENT, fg=COLOR_BG_DARK, relief="flat", padx=8, pady=10, state="disabled", width=10)
+        self.copy_totp_btn.pack(side="top", pady=5)
         
         btn_frame = tk.Frame(content, bg=COLOR_BG_DARK)
         btn_frame.pack(fill="x")
@@ -126,16 +145,32 @@ class CredentialManagerGUI:
         if not self.current_credential: return
         c = self.current_credential
         text = f"Platform: {self.current_platform}\n\nUsername: {c['username']}\n\nPassword: {c['password']}\n"
-        text += f"\nMFA: {c['mfa'] if c['mfa'] else 'MFA not configured'}"
+        if c.get('mfa'):
+            totp = pyotp.TOTP(c['mfa'])
+            current_code = totp.now()
+            text += f"\nMFA Secret: {c['mfa']}\n\nCurrent TOTP: {current_code}"
+        else:
+            text += "\nMFA: Not configured"
         self.detail_text.config(state="normal")
         self.detail_text.delete(1.0, "end")
         self.detail_text.insert(1.0, text)
         self.detail_text.config(state="disabled")
-    
+        self.copy_username_btn.config(state="normal")
+        self.copy_password_btn.config(state="normal")
+        self.copy_totp_btn.config(state="normal")
+
     def clear_details(self):
         self.detail_text.config(state="normal")
         self.detail_text.delete(1.0, "end")
         self.detail_text.config(state="disabled")
+        self.copy_username_btn.config(state="disabled")
+        self.copy_password_btn.config(state="disabled")
+        self.copy_totp_btn.config(state="disabled")
+
+    def copy_totp(self):
+        if self.current_credential and self.current_credential.get('mfa'):
+            totp = pyotp.TOTP(self.current_credential['mfa'])
+            pyperclip.copy(totp.now())  
     
     def show_message(self, title, message, on_back=None):
         self.current_dialog = {"type": "message"}
@@ -219,6 +254,13 @@ class CredentialManagerGUI:
         if not self.current_dialog or self.current_dialog["type"] != "input" or e.keysym in ["Return", "Escape"]: return
         fields = self.current_dialog["field_order"]
         current_field = fields[self.current_dialog["index"]]
+        if e.state & 0x4 and e.keysym == 'v':
+            try:
+                pasted = self.root.clipboard_get()
+                self.current_dialog["fields"][current_field].set(self.current_dialog["fields"][current_field].get() + pasted)
+            except:
+                pass
+            return
         if e.keysym == "BackSpace":
             val = self.current_dialog["fields"][current_field].get()
             self.current_dialog["fields"][current_field].set(val[:-1] if val else "")
@@ -229,39 +271,57 @@ class CredentialManagerGUI:
     
     def add_platform(self):
         def on_submit(values):
-            platform = values.get("Platform Name", "").strip()
+            platform = values.get("Type Your Platform Name", "").strip()
             if not platform: self.show_message("Error", "Platform name required"); return
             if platform in self.manager.get_platforms(): self.show_message("Error", "Platform already exists"); return
             self.manager.vault.vault[platform] = []
             self.manager.vault.save()
+            self.plat_combo['values'] = self.manager.get_platforms()
+            self.plat_combo.set(platform)
+            self.clear_details()
             self.show_message("Success", f"Added {platform}", lambda: self.create_main_screen())
         def on_cancel():
             self.clear_details()
         self.show_input_dialog("Add Platform", ["Type Your Platform Name"], on_submit, on_cancel)
     
+    def del_platform(self):
+        if not self.current_platform: self.show_message("Error", "Select a platform to delete"); return
+        platform_to_delete = self.current_platform
+        def on_yes():
+            del self.manager.vault.vault[platform_to_delete]
+            self.manager.vault.save()
+            self.plat_combo['values'] = self.manager.get_platforms()
+            self.plat_combo.set('')
+            self.current_platform = None
+            self.clear_details()
+            self.show_message("Success", f"Platform '{platform_to_delete}' deleted", lambda: self.create_main_screen())
+        def on_no():
+            self.clear_details()
+        self.show_confirmation("Delete Platform", f"Delete '{platform_to_delete}' and all credentials?", on_yes, on_no)
+
     def add_creds(self):
         if not self.current_platform: self.show_message("Error", "Select platform"); return
         def on_submit(values):
-            u, pw, m = values.get("Username", "").strip(), values.get("Password", "").strip(), values.get("MFA (optional)", "").strip()
+            u, pw, m = values.get("Type Your Username", "").strip(), values.get("Type Your Password", "").strip(), values.get("Type Your MFA Secret Key (optional)", "").strip()
             if not all([u, pw]): self.show_message("Error", "Username and Password required"); return
             success, msg = self.manager.add_cred(self.current_platform, u, pw, m or None)
             if success: self.show_message("Success", msg, lambda: self.create_main_screen())
             else: self.show_message("Error", msg)
         def on_cancel():
             self.clear_details()
-        self.show_input_dialog("Add Credential", ["Type Your Username", "Type Your Password", "Type Your MFA Secret Code (optional)"], on_submit, on_cancel)
+        self.show_input_dialog("Add Credential", ["Type Your Username", "Type Your Password", "Type Your MFA Secret Key (optional)"], on_submit, on_cancel)
     
     def edit_creds(self):
         if not self.current_credential: self.show_message("Error", "Select credential"); return
         def on_submit(values):
-            pw, m = values.get("Password", "").strip(), values.get("MFA (optional)", "").strip()
+            pw, m = values.get("Type Your New Password", "").strip(), values.get("Type Your New MFA Secret Key (optional)", "").strip()
             if not pw: self.show_message("Error", "Password required"); return
             success, msg = self.manager.edit_cred(self.current_platform, self.current_credential['username'], pw, m or None)
             if success: self.show_message("Success", msg, lambda: self.create_main_screen())
             else: self.show_message("Error", msg)
         def on_cancel():
             self.show_details()
-        self.show_input_dialog("Edit Credential", ["Type Your Password", "Type Your MFA Secret Code (optional)"], on_submit, on_cancel)
+        self.show_input_dialog("Edit Credential", ["Type Your New Password", "Type Your New MFA Secret Key (optional)"], on_submit, on_cancel)
     
     def del_creds(self):
         if not self.current_credential: self.show_message("Error", "Select credential"); return
@@ -317,6 +377,7 @@ class CredentialManagerGUI:
         self.show_confirmation("Export Credentials", "⚠️ This will download DECRYPTED passwords to Excel.\n\nProceed?", on_yes, on_no)
 
 root = tk.Tk()
+root.resizable(False, False)
 style = ttk.Style()
 style.theme_use('clam')
 gui = CredentialManagerGUI(root)

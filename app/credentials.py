@@ -53,7 +53,7 @@ class CredentialVault:
         credential = {'username': username, 'password': encrypted_password}
         if encrypted_secret: credential['mfa'] = encrypted_secret
         self.vault[platform].append(credential)
-        self._save()
+        self.save()
         return True, f"Added {username}"
     
     def edit_cred(self, platform, username, new_password=None, new_mfa=None):
@@ -65,7 +65,7 @@ class CredentialVault:
                 if new_mfa is not None:
                     if new_mfa: cred['mfa'] = self.crypto.encrypt_aes(new_mfa)
                     elif 'mfa' in cred: del cred['mfa']
-                self._save()
+                self.save()
                 return True, f"Updated {username}"
         return False, "Username not found"
     
@@ -76,7 +76,7 @@ class CredentialVault:
             if cred['username'] == username:
                 self.vault[platform].pop(i)
                 if not self.vault[platform]: del self.vault[platform]
-                self._save()
+                self.save()
                 return True, f"Deleted {username}"
         return False, "Username not found"
     

@@ -1,5 +1,3 @@
-from pathlib import Path
-import os
 import getpass
 
 APP_NAME = "Password Manager"
