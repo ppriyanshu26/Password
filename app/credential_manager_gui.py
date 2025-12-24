@@ -154,7 +154,7 @@ class CredentialManagerGUI:
         self.detail_text.config(state="disabled")
         self.copy_username_btn.config(state="normal")
         self.copy_password_btn.config(state="normal")
-        self.copy_totp_btn.config(state="normal")
+        self.copy_totp_btn.config(state="normal" if c.get('mfa') else "disabled")
 
     def clear_details(self):
         self.detail_text.config(state="normal")

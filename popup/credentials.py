@@ -34,6 +34,7 @@ def load_vault():
 def save_vault(vault):
     with open(VAULT_FILE, "w", encoding="utf-8") as f:
         json.dump(vault, f, indent=2, ensure_ascii=False)
+        f.flush()
 
 class CredentialVault:
     def __init__(self, crypto=None):

@@ -1,5 +1,3 @@
-from pathlib import Path
-import os
 import getpass
 
 APP_NAME = "Password Manager"
@@ -15,8 +13,8 @@ MASTER_KEY_CACHE_TIMEOUT = 300
 TRIGGER_KEYWORDS = {
     "email", "e-mail", "username", "user", "login", 
     "password", "pass", "signin", "sign in", "sign-in",
-    "account", "credential", "id", "identifier",
-    "phone", "mobile", "number"
+    "account", "credential", "id", "identifier", "verification"
+    "phone", "mobile", "number", "code", "otp", "mfa", "2fa", "auth"
 }
 
 COLOR_BG_DARK = "#2b2b2b"

@@ -6,12 +6,6 @@ from popup import show_popup_from_root
 import sys
 from config import TRIGGER_KEYWORDS, HOTKEY
 import tkinter as tk
-import os
-
-BASE_APP_DIR = os.getenv("APPDATA")
-APP_FOLDER = os.path.join(BASE_APP_DIR, "Password Manager")
-os.makedirs(APP_FOLDER, exist_ok=True)
-VAULT_FILE = os.path.join(APP_FOLDER, "credentials.json")
 
 root = None
 popup_active = False
