@@ -5,13 +5,7 @@ from classes import Crypto
 from config import COLOR_BG_DARK, COLOR_BG_MEDIUM, COLOR_ACCENT, COLOR_TEXT_PRIMARY, COLOR_ERROR, APP_NAME, APP_VERSION
 import credentials as cred
 from utils import export_credentials_to_excel
-import os
 import pyotp
-
-BASE_APP_DIR = os.getenv("APPDATA")
-APP_FOLDER = os.path.join(BASE_APP_DIR, "Password Manager")
-os.makedirs(APP_FOLDER, exist_ok=True)
-VAULT_FILE = os.path.join(APP_FOLDER, "credentials.json")
 
 class CredentialManager:
     def __init__(self):

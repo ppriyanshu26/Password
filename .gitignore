@@ -1,5 +1,6 @@
 # Credentials - contains sensitive data
 credentials.json
+*.exe
 
 # Python
 __pycache__/
