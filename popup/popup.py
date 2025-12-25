@@ -311,6 +311,8 @@ class PasswordPopup:
             self.onclose()
     
     def open_manager(self):
+        PasswordPopup.cached_master_key = None
+        PasswordPopup.cached_master_key_time = None
         self.close()
         time.sleep(0.5)
         try:

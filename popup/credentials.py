@@ -5,7 +5,7 @@ import keyring
 from config import SERVICE_NAME, USERNAME
 
 BASE_APP_DIR = os.getenv("APPDATA")
-APP_FOLDER = os.path.join(BASE_APP_DIR, "Password Manager")
+APP_FOLDER = os.path.join(BASE_APP_DIR, "Password-Manager")
 os.makedirs(APP_FOLDER, exist_ok=True)
 VAULT_FILE = os.path.join(APP_FOLDER, "credentials.json")
 
