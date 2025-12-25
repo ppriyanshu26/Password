@@ -29,22 +29,29 @@ def force_foreground(root):
         pass
 
 def create_account_frame(parent, account, idx, on_click_callback=None, popup_instance=None):
+    def pad_field(s):
+        s = (s or "")
+        if len(s) > 20:
+            return s[:17] + "..."
+        return s.ljust(20)
     frame = tk.Frame(parent, bg=COLOR_BG_MEDIUM, cursor="hand2")
     frame.account_data = account
     frame.index = idx
     content_frame = tk.Frame(frame, bg=COLOR_BG_MEDIUM)
     content_frame.pack(side="left", fill="both", expand=True)
-    
-    service_label = tk.Label(content_frame, text=f"🪪{account['service']}", font=("Segoe UI", 10, "bold"), bg=COLOR_BG_MEDIUM, fg=COLOR_ACCENT, anchor="w")
+
+    display_service = pad_field(account.get("service", ""))
+    display_username = pad_field(account.get("username", ""))
+    service_label = tk.Label(content_frame, text=f"🪪{display_service}", font=("Segoe UI", 10, "bold"), bg=COLOR_BG_MEDIUM, fg=COLOR_ACCENT, anchor="w")
     service_label.pack(fill="x", padx=10, pady=(8, 2))
-    username_label = tk.Label(content_frame, text=f"👤 {account['username']}", font=("Segoe UI", 9), bg=COLOR_BG_MEDIUM, fg="#ffffff", anchor="w")
+    username_label = tk.Label(content_frame, text=f"👤 {display_username}", font=("Segoe UI", 9), bg=COLOR_BG_MEDIUM, fg="#ffffff", anchor="w")
     username_label.pack(fill="x", padx=10, pady=(0, 8))
-    
+
     if on_click_callback:
         frame.bind("<Button-1>", lambda e, i=idx: on_click_callback(i))
         service_label.bind("<Button-1>", lambda e, i=idx: on_click_callback(i))
         username_label.bind("<Button-1>", lambda e, i=idx: on_click_callback(i))
-    
+
     buttons_frame = tk.Frame(frame, bg=COLOR_BG_MEDIUM)
     buttons_frame.pack(side="right", padx=10, pady=8)
     btn1 = TooltipButton(buttons_frame, text="Button 1", emoji="📋", tooltip_text="Fill Credentials", command=lambda: button_click(1, account, popup_instance))

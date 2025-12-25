@@ -302,6 +302,8 @@ class CredentialManagerGUI:
         self.render_input_dialog(title)
     
     def add_platform(self):
+        self.copy_password_btn.config(state="disabled")
+        self.copy_totp_btn.config(state="disabled")
         def on_submit(values):
             platform = values.get("Type Your Platform Name", "").strip()
             if not platform: self.show_message("Error", "Platform name required"); return
@@ -317,6 +319,8 @@ class CredentialManagerGUI:
         self.show_input_dialog("Add Platform", ["Type Your Platform Name"], on_submit, on_cancel)
     
     def del_platform(self):
+        self.copy_password_btn.config(state="disabled")
+        self.copy_totp_btn.config(state="disabled")
         if not self.current_platform: self.show_message("Error", "Select a platform to delete"); return
         platform_to_delete = self.current_platform
         def on_yes():
@@ -332,6 +336,8 @@ class CredentialManagerGUI:
         self.show_confirmation("Delete Platform", f"Delete '{platform_to_delete}' and all credentials?", on_yes, on_no)
 
     def add_creds(self):
+        self.copy_password_btn.config(state="disabled")
+        self.copy_totp_btn.config(state="disabled")
         if not self.current_platform: self.show_message("Error", "Select platform"); return
         def on_submit(values):
             u, pw, m = values.get("Type Your Username", "").strip(), values.get("Type Your Password", "").strip(), values.get("Type Your MFA Secret Key (optional)", "").strip()
@@ -344,6 +350,8 @@ class CredentialManagerGUI:
         self.show_input_dialog("Add Credential", ["Type Your Username", "Type Your Password", "Type Your MFA Secret Key (optional)"], on_submit, on_cancel)
     
     def edit_creds(self):
+        self.copy_password_btn.config(state="disabled")
+        self.copy_totp_btn.config(state="disabled")
         if not self.current_credential: self.show_message("Error", "Select credential"); return
         def on_submit(values):
             pw, m = values.get("Type Your New Password", "").strip(), values.get("Type Your New MFA Secret Key (optional)", "").strip()
@@ -356,6 +364,8 @@ class CredentialManagerGUI:
         self.show_input_dialog("Edit Credential", ["Type Your New Password", "Type Your New MFA Secret Key (optional)"], on_submit, on_cancel)
     
     def del_creds(self):
+        self.copy_password_btn.config(state="disabled")
+        self.copy_totp_btn.config(state="disabled")
         if not self.current_credential: self.show_message("Error", "Select credential"); return
         def on_yes():
             success, msg = self.manager.del_cred(self.current_platform, self.current_credential['username'])
@@ -374,6 +384,8 @@ class CredentialManagerGUI:
         self.show_confirmation("Logout", "Are you sure?", on_yes, on_no)
     
     def update_key(self):
+        self.copy_password_btn.config(state="disabled")
+        self.copy_totp_btn.config(state="disabled")
         def on_submit(values):
             current_pwd = values.get("Type Your Current Master Key", "").strip()
             new_pwd = values.get("Type Your New Master Key", "").strip()
@@ -400,6 +412,8 @@ class CredentialManagerGUI:
         self.show_input_dialog("CHANGE MASTER KEY", ["Type Your Current Master Key", "Type Your New Master Key", "Type Your New Master Key Again"], on_submit, on_cancel)
     
     def export_credentials(self):
+        self.copy_password_btn.config(state="disabled")
+        self.copy_totp_btn.config(state="disabled")
         def on_yes():
             result = export_credentials_to_excel(self.manager.master_key)
             if result["success"]:

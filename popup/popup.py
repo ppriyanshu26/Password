@@ -47,7 +47,7 @@ class PasswordPopup:
         self.show_key_input()
         self.root.bind("<Escape>", self.close)
         self.root.update_idletasks()
-        width = 300
+        width = 380
         height = WINDOW_HEIGHT
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
