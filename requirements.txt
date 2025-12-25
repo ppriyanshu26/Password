@@ -1,8 +1,11 @@
 altgraph==0.17.5
+certifi==2025.11.12
 cffi==2.0.0
+charset-normalizer==3.4.4
 comtypes==1.4.14
 cryptography==46.0.3
 et_xmlfile==2.0.0
+idna==3.11
 jaraco.classes==3.4.0
 jaraco.context==6.0.1
 jaraco.functools==4.4.0
@@ -22,6 +25,8 @@ pyotp==2.9.0
 pyperclip==1.11.0
 pywin32==311
 pywin32-ctypes==0.2.3
+requests==2.32.5
 setuptools==80.9.0
 uiautomation==2.0.29
+urllib3==2.6.2
 wheel==0.45.1

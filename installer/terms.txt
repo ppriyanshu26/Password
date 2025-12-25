@@ -1,0 +1,17 @@
+Password Manager - Terms & Conditions
+
+By using this software you agree to the following before installation proceeds:
+
+1. No warranty: The software is provided "as-is" with no express or implied warranties.
+2. Data responsibility: You are solely responsible for your data and maintaining backups.
+3. Lawful use: Do not use this software for illegal or unauthorized activities.
+4. Master password: You must keep your master password secure; lost passwords cannot be recovered.
+5. Local files & shortcuts: The installer will create files in your user AppData folder and add a shortcut to your Startup folder.
+6. Running processes: The installer may start or stop local processes (e.g., the app's startup executable) to complete installation.
+7. Updates & downloads: The installer may download application files from the internet during setup.
+8. Privacy: The application stores encrypted data locally; no personal data is collected.
+9. Open source: This project is open source and available under the repository's license.
+10. Support & liability: Developer liability is limited; contact the developer for support but maintain your own backups.
+
+Email - id: contact@ppriyanshu26.online
+Repository: https://github.com/ppriyanshu26/Password/
