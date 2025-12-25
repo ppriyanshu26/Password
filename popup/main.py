@@ -59,7 +59,7 @@ def main():
     root.geometry("1x1+0+0")
     
     try:
-        keyboard.add_hotkey(HOTKEY, on_hotkey, suppress=True)
+        keyboard.add_hotkey(HOTKEY, on_hotkey)
         keyboard_thread = threading.Thread(target=keyboard.wait, daemon=True)
         keyboard_thread.start()
         root.mainloop()

@@ -87,6 +87,29 @@ class PasswordPopup:
             self.root.focus_force()
             self.master_entry.focus_set()
             self.master_entry.icursor(tk.END)
+        root = self.root
+        if not root:
+            return
+        try:
+            if not root.winfo_exists():
+                return
+        except Exception:
+            return
+        try:
+            if self.master_entry and self.master_entry.winfo_exists():
+                force_foreground(root)
+                root.lift()
+                root.attributes("-topmost", True)
+                root.focus_force()
+                try:
+                    self.master_entry.focus_set()
+                    self.master_entry.icursor(tk.END)
+                except Exception:
+                    pass
+        except tk.TclError:
+            return
+        except Exception:
+            return
     
     def masterkey_valid(self):
         if PasswordPopup.cached_master_key is None or PasswordPopup.cached_master_key_time is None:

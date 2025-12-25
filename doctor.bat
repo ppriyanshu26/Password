@@ -7,7 +7,7 @@ set CREDENTIALS=%BASEDIR%\credentials.json
 set STARTUP_EXE=%BASEDIR%\Startup.exe
 set MAIN_EXE=%BASEDIR%\Password-Manager.exe
 
-set STARTUP_SHA=36cc6ab8e73fd60aaa2e6dd75fc688cfb04afe5e9768dc059c05118ab4f69607
+set STARTUP_SHA=bf2f3cd6a5ae28a7eda686305a260452ca83e412340dc87fa2ed7bbc7d3edb9f
 set MAIN_SHA=dcfaf959122b42cf18c8ae7dc7324f22617da0cfa17ccb5bbd691d74e838f8e8
 
 set STARTUP_FOLDER=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup
