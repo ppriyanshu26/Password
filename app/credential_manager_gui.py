@@ -1,10 +1,12 @@
 import tkinter as tk
 from tkinter import ttk
+import tkinter.filedialog as filedialog
 import pyperclip
+from PIL import Image, ImageTk
 from classes import Crypto
 from config import COLOR_BG_DARK, COLOR_BG_MEDIUM, COLOR_ACCENT, COLOR_TEXT_PRIMARY, COLOR_ERROR, APP_NAME, APP_VERSION
 import credentials as cred
-from utils import export_credentials_to_excel
+from utils import export_credentials_to_excel, extract_totp_from_qr
 import pyotp
 
 class CredentialManager:
@@ -106,12 +108,12 @@ class CredentialManagerGUI:
         
         self.copy_btn_frame = tk.Frame(detail_container, bg=COLOR_BG_DARK)
         self.copy_btn_frame.pack(side="left", fill="y", padx=10)
-        self.copy_username_btn = tk.Button(self.copy_btn_frame, text="Copy Username", command=lambda: pyperclip.copy(self.current_credential['username']), font=("Segoe UI", 8), bg=COLOR_ACCENT, fg=COLOR_BG_DARK, relief="flat", padx=8, pady=10, state="disabled", width=10)
-        self.copy_username_btn.pack(side="top", pady=5)
-        self.copy_password_btn = tk.Button(self.copy_btn_frame, text="Copy Password", command=lambda: pyperclip.copy(self.current_credential['password']), font=("Segoe UI", 8), bg=COLOR_ACCENT, fg=COLOR_BG_DARK, relief="flat", padx=8, pady=10, state="disabled", width=10)
+        self.copy_password_btn = tk.Button(self.copy_btn_frame, text="Copy Password", command=lambda: pyperclip.copy(self.current_credential['password']), font=("Segoe UI", 8), bg=COLOR_BG_MEDIUM, fg="white", relief="flat", padx=8, pady=10, state="disabled", width=10)
         self.copy_password_btn.pack(side="top", pady=5)
-        self.copy_totp_btn = tk.Button(self.copy_btn_frame, text="Copy TOTP", command=self.copy_totp, font=("Segoe UI", 8), bg=COLOR_ACCENT, fg=COLOR_BG_DARK, relief="flat", padx=8, pady=10, state="disabled", width=10)
+        self.copy_totp_btn = tk.Button(self.copy_btn_frame, text="Copy TOTP", command=self.copy_totp, font=("Segoe UI", 8), bg=COLOR_BG_MEDIUM, fg="white", relief="flat", padx=8, pady=10, state="disabled", width=10)
         self.copy_totp_btn.pack(side="top", pady=5)
+        self.load_totp_btn = tk.Button(self.copy_btn_frame, text="Load TOTP", command=self.load_totp, font=("Segoe UI", 8), bg=COLOR_BG_MEDIUM, fg="white", relief="flat", padx=8, pady=10, state="disabled", width=10)
+        self.load_totp_btn.pack(side="top", pady=5)
         
         btn_frame = tk.Frame(content, bg=COLOR_BG_DARK)
         btn_frame.pack(fill="x")
@@ -141,18 +143,17 @@ class CredentialManagerGUI:
     def show_details(self):
         if not self.current_credential: return
         c = self.current_credential
-        text = f"Username: {c['username']}\n\nPassword: {c['password']}\n"
+        text = f"Username: {c['username']}\n\nPassword: {c['password']}"
         if c.get('mfa'):
             totp = pyotp.TOTP(c['mfa'])
             current_code = totp.now()
-            text += f"\nMFA Secret Key: {c['mfa']}\n\nCurrent TOTP: {current_code}"
+            text += f"\n\nCurrent TOTP: {current_code}"
         else:
             text += "\nMFA: Not configured"
         self.detail_text.config(state="normal")
         self.detail_text.delete(1.0, "end")
         self.detail_text.insert(1.0, text)
         self.detail_text.config(state="disabled")
-        self.copy_username_btn.config(state="normal")
         self.copy_password_btn.config(state="normal")
         self.copy_totp_btn.config(state="normal" if c.get('mfa') else "disabled")
 
@@ -160,7 +161,6 @@ class CredentialManagerGUI:
         self.detail_text.config(state="normal")
         self.detail_text.delete(1.0, "end")
         self.detail_text.config(state="disabled")
-        self.copy_username_btn.config(state="disabled")
         self.copy_password_btn.config(state="disabled")
         self.copy_totp_btn.config(state="disabled")
 
@@ -168,6 +168,27 @@ class CredentialManagerGUI:
         if self.current_credential and self.current_credential.get('mfa'):
             totp = pyotp.TOTP(self.current_credential['mfa'])
             pyperclip.copy(totp.now())  
+    
+    def load_totp(self):
+        if not self.current_dialog or self.current_dialog.get("type") != "input":
+            self.show_message("Error", "No input dialog open to load TOTP into"); return
+        fields = self.current_dialog["field_order"]
+        idx = self.current_dialog["index"]
+        current_field = fields[idx]
+        if "mfa" not in current_field.lower():
+            self.show_message("Error", "Current field is not an MFA field"); return
+        file = filedialog.askopenfilename(title="Select QR image", filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif")])
+        if not file:
+            return
+        try:
+            secret = extract_totp_from_qr(file)
+        except Exception:
+            secret = None
+        if not secret:
+            self.show_message("Error", "No TOTP secret found in QR")
+            return
+        self.current_dialog["fields"][current_field].set(secret)
+        self.render_input_dialog(self.detail_text.get(1.0, "1.end"))
     
     def show_message(self, title, message, on_back=None):
         self.current_dialog = {"type": "message"}
@@ -224,6 +245,14 @@ class CredentialManagerGUI:
         dialog_fields = self.current_dialog["fields"]
         on_submit_cb = self.current_dialog["on_submit"]
         on_cancel_cb = self.current_dialog["on_cancel"]
+
+        mfakey_indicators = ["MFA", "MFA Secret", "MFA Secret Key", "MFA Secret Key (optional)"]
+        if any(k.lower() in current_field.lower() for k in mfakey_indicators):
+            try: self.load_totp_btn.config(state="normal")
+            except: pass
+        else:
+            try: self.load_totp_btn.config(state="disabled")
+            except: pass
         
         def next_field(e=None):
             if not self.current_dialog or self.current_dialog.get("type") != "input": return
@@ -234,12 +263,16 @@ class CredentialManagerGUI:
                 self.render_input_dialog(title)
             else:
                 values = {f: dialog_fields[f].get() for f in fields_copy}
+                try: self.load_totp_btn.config(state="disabled")
+                except: pass
                 self.current_dialog = None
                 on_submit_cb(values)
         
         def cancel(e=None):
             if self.current_dialog:
                 self.current_dialog = None
+                try: self.load_totp_btn.config(state="disabled")
+                except: pass
                 on_cancel_cb()
         
         self.detail_text.bind("<Return>", next_field)
